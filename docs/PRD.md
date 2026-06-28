@@ -1,6 +1,6 @@
 # Product Requirements Document (PRD)
 
-**Project codename:** TBD (working name: *Stash*)
+**Project codename:** FINDIT (working name: FINDIT)
 **Author:** Biday
 **Last updated:** June 26, 2026
 **Status:** Draft — MVP scope locked, document in active iteration
