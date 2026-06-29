@@ -46,9 +46,11 @@ These are explicitly post-MVP capabilities.
 
 ### 3.1 Model
 
-**Gemini 3 Flash** via Google AI Studio API.
+**Gemini 3.5 Flash** (`gemini-3.5-flash`) via Google AI Studio API.
 
-- Endpoint: `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent`
+> Note (2026-06-29): The docs originally specified `gemini-3-flash`, but that exact ID does not exist in the API. The real stable Flash model available on the free tier is `gemini-3.5-flash`. Chosen over `gemini-3-flash-preview` because preview models can be deprecated without notice.
+
+- Endpoint: `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent`
 - Auth: API key in query parameter (`?key=...`) or header
 - Free tier (as of mid-2026): 10 RPM, 1,500 RPD, 250K TPM
 
@@ -439,7 +441,7 @@ def build_prompt(content: FetchedContent) -> str:
 
 def call_gemini(prompt: str) -> str:
     response = client.models.generate_content(
-        model="gemini-3-flash",
+        model="gemini-3.5-flash",
         contents=prompt,
         config={
             "temperature": 0.2,

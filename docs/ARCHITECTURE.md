@@ -250,7 +250,7 @@ CREATE INDEX idx_items_search ON items USING gin(
 #### Gemini 3 Flash (Google AI Studio)
 
 - Free tier (as of mid-2026): 10 RPM, 250K TPM, 1,500 RPD
-- Endpoint: https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent
+- Endpoint: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent (model id: `gemini-3.5-flash` — `gemini-3-flash` does not exist; see AI_FEATURE_SPEC Section 3.1)
 - Note: Google has revised free-tier limits multiple times (Dec 2025 cut quotas 50-80%, April 2026 removed Pro from free tier entirely). Verify current limits in Google AI Studio before relying on these numbers.
 - Alternative: Gemini 3.1 Flash-Lite (15 RPM) if classification/extraction is the bottleneck
 

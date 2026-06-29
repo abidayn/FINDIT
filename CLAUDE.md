@@ -111,7 +111,7 @@ These decisions are made. Do not suggest alternatives unless explicitly asked or
 - Schema in `ARCHITECTURE.md` Section 3.3
 
 ### AI
-- **Gemini 3 Flash** via Google AI Studio (free tier: ~10 RPM, 1,500 RPD as of mid-2026)
+- **Gemini 3.5 Flash** (`gemini-3.5-flash`) via Google AI Studio (free tier as of mid-2026). NOTE: `gemini-3-flash` does not exist in the API; verified `gemini-3.5-flash` 2026-06-29.
 - Called only from `backend/services/ai.py`, single function `process_content()`
 
 ### Content fetching
@@ -244,7 +244,7 @@ If the builder asks for Phase 3 polish while Phase 1 isn't done, gently note the
 
 Full detail in `AI_FEATURE_SPEC.md`. The essentials:
 
-- **Model:** Gemini 3 Flash, temperature 0.2, JSON output mode, max 300 output tokens
+- **Model:** Gemini 3.5 Flash (`gemini-3.5-flash`), temperature 0.2, JSON output mode, max 300 output tokens
 - **Output schema:** `{ title, summary, folder, confidence }`
 - **Folders (fixed, 9):** Self Growth, Productivity, Tech & Coding, Finance, Cooking & Food, Fitness & Health, Entertainment, Learning, Other
 - **Title:** 1–7 words, no clickbait
