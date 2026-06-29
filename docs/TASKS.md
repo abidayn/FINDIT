@@ -87,15 +87,16 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 - [ ] Visit `http://localhost:8000/health` in browser, confirm response
 - [ ] Visit `http://localhost:8000/docs` to see auto-generated Swagger UI
 
-### 0.6 Backend deployment (Railway)
+### 0.6 Backend deployment (Render)
 
-- [ ] Create Railway account at railway.app (free tier)
-- [ ] Connect GitHub repo to Railway
-- [ ] Create new Railway service from the repo, root directory = `backend/`
-- [ ] Add all environment variables in Railway dashboard
-- [ ] Confirm Railway auto-detects Python and deploys
-- [ ] Visit the Railway-provided URL + `/health`, confirm it works publicly
-- [ ] Save the Railway URL — this is your `EXPO_PUBLIC_API_URL`
+- [ ] Create account at render.com — sign up with GitHub
+- [ ] New → Web Service → connect repo `abidayn/FINDIT`
+- [ ] Set root directory to `backend/`, runtime Python, start command auto-read from `Procfile`
+- [ ] Add all environment variables in Render dashboard (same keys as `backend/.env`)
+- [ ] Confirm deploy succeeds — check logs for `Application startup complete`
+- [ ] Visit the Render-provided URL + `/health`, confirm it works publicly
+- [ ] Save the Render URL — this is your `EXPO_PUBLIC_API_URL`
+- [ ] Note: free tier spins down after 15 min idle — first request after that takes ~30-50s
 
 ### 0.7 Mobile project init (React Native + Expo)
 
@@ -113,12 +114,12 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 - [ ] In `mobile/lib/api.ts`, create a function `fetchHealth()` that calls `${EXPO_PUBLIC_API_URL}/health`
 - [ ] In `app/index.tsx`, call it on mount and display the response
-- [ ] Confirm on phone: app loads → calls Railway backend → shows "status: ok"
+- [ ] Confirm on phone: app loads → calls Render backend → shows "status: ok"
 - [ ] This is the moment your two systems are talking. Celebrate small.
 
 ### Phase 0 — Definition of Done
 
-✅ Phone-installed app calls Railway-deployed backend successfully
+✅ Phone-installed app calls Render-deployed backend successfully
 ✅ Backend can read from Supabase database
 ✅ All API keys (Gemini, YouTube, Supabase) tested and working independently
 ✅ Repo structure matches `ARCHITECTURE.md`
@@ -129,7 +130,7 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 - **Committing `.env` to git** — double-check `.gitignore` BEFORE first commit
 - **Mixing up Supabase keys** — `anon` key is for client (mobile), `service` key is for server (backend). Never put service key on mobile.
-- **Railway free tier idle sleep** — backend may take 10s to respond after inactivity. Normal.
+- **Render free tier cold start** — backend spins down after 15 min idle. First request takes ~30-50s to wake up. Normal, not a bug.
 - **Expo Go vs dev client** — share intent does NOT work in Expo Go. We will need a dev client build in Phase 1.
 - **Forgetting CORS** — backend must allow requests from mobile origin. For MVP set `allow_origins=["*"]`.
 
@@ -215,7 +216,7 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 - [ ] Test with a TikTok URL (should be LOW quality output, use fallback)
 - [ ] Test with an invalid URL (should return error gracefully)
 - [ ] Check Supabase dashboard — rows should be appearing
-- [ ] Check Railway logs — should see one log line per request
+- [ ] Check Render logs — should see one log line per request
 
 ### 1.8 Mobile — Share intent integration
 
@@ -259,7 +260,7 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 ### Phase 1 — Common Pitfalls
 
 - **Trying to make share intent work in Expo Go.** It won't. Use dev client build.
-- **CORS errors after deploy.** Backend on Railway, mobile testing on phone — different origins. Confirm CORS allows your Railway URL.
+- **CORS errors after deploy.** Backend on Render, mobile testing on phone — different origins. Confirm CORS allows your Render URL.
 - **API keys in mobile bundle.** Only `EXPO_PUBLIC_*` keys should be in `mobile/.env`. Gemini and YouTube keys ONLY in backend.
 - **Forgetting to handle the "AI returns junk JSON" case.** The validation logic in spec is there for a reason — test it.
 - **Building UI polish in Phase 1.** Save screen can be ugly. We polish in Phase 3.

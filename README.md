@@ -7,7 +7,7 @@ An Android-first mobile app that saves links from TikTok, Instagram, YouTube, an
 ## Stack
 
 - **Mobile:** React Native + Expo (TypeScript)
-- **Backend:** FastAPI (Python) on Railway
+- **Backend:** FastAPI (Python) on Render
 - **Database:** Supabase (PostgreSQL)
 - **AI:** Gemini 3 Flash (Google AI Studio)
 

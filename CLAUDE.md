@@ -104,7 +104,7 @@ These decisions are made. Do not suggest alternatives unless explicitly asked or
 ### Backend
 - **FastAPI** (Python)
 - **Pydantic** for all request/response models
-- **Deployed on Railway** (free tier)
+- **Deployed on Render** (free tier — switched from Railway 2026-06-29, Railway only gave 30-day $5 credit)
 
 ### Database
 - **Supabase** (PostgreSQL) — free tier
