@@ -104,7 +104,7 @@ These decisions are made. Do not suggest alternatives unless explicitly asked or
 ### Backend
 - **FastAPI** (Python)
 - **Pydantic** for all request/response models
-- **Deployed on Render** (free tier — switched from Railway 2026-06-29, Railway only gave 30-day $5 credit)
+- **Deployed on Railway** (free tier — $5 credit lasts ~3–4 months for a small app; Hobby plan $5/month after)
 
 ### Database
 - **Supabase** (PostgreSQL) — free tier

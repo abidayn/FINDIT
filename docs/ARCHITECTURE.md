@@ -36,7 +36,7 @@ Audience: the builder (Biday), future contributors, and Claude Code while vibe c
                                             │ (REST API)
                                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                       BACKEND (Render)                           │
+│                       BACKEND (Railway)                          │
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │              FastAPI Server (Python)                     │   │
@@ -125,7 +125,7 @@ Expo has two modes. Managed is easier but limits native customization. Share int
 
 ---
 
-### 3.2 Backend (FastAPI on Render)
+### 3.2 Backend (FastAPI on Railway)
 
 **Role:** The brain. Orchestrates fetching content, calling AI, and storing/retrieving data. Mobile app never talks to AI or content sources directly — only the backend does.
 
@@ -136,12 +136,12 @@ Expo has two modes. Managed is easier but limits native customization. Share int
 - Python is the de facto language for AI/ML — sets up future learning paths
 - Excellent type hints via Pydantic — catches bugs at development time
 
-**Why Render for hosting:**
-- Free forever (Railway only gave $5 credit = ~30 days, switched 2026-06-29)
+**Why Railway for hosting:**
+- $5 free credit lasts ~3–4 months for a small personal app (usage-based, not time-based)
 - Deploy via `git push` — no Kubernetes nightmare
 - Automatic HTTPS
 - Environment variables managed via dashboard
-- Trade-off: free tier "spins down" after 15 min inactivity — first request takes ~30-50s to wake up. Acceptable for personal use.
+- After credit: Hobby plan $5/month. Worth it if the app has real users.
 
 **API endpoints (MVP):**
 
@@ -388,7 +388,7 @@ stash/
 │   ├── requirements.txt                 # Python dependencies
 │   ├── .env                             # GEMINI_API_KEY, SUPABASE_URL, SUPABASE_KEY
 │   ├── .env.example                     # Template (committed to git)
-│   └── Procfile                         # Render/Heroku start command
+│   └── Procfile                         # Railway/Heroku start command
 │
 ├── docs/
 │   ├── PRD.md
@@ -421,7 +421,7 @@ YOUTUBE_API_KEY=...        # YouTube Data API v3
 
 **Mobile (`mobile/.env`):**
 ```
-EXPO_PUBLIC_API_URL=https://stash-backend.onrender.com
+EXPO_PUBLIC_API_URL=https://stash-backend.up.railway.app
 EXPO_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 ```
@@ -461,14 +461,14 @@ npx expo run:android
 
 ## 7. Deployment Strategy
 
-### 7.1 Backend deployment (Render)
+### 7.1 Backend deployment (Railway)
 
 1. Push backend code to GitHub
-2. Create new Web Service on render.com, connect GitHub repo
-3. Set root directory to `backend/`, build command `pip install -r requirements.txt`, start command is read from `Procfile`
-4. Add environment variables in Render dashboard
-5. Render provides a public URL (`https://xxx.onrender.com`); copy to `EXPO_PUBLIC_API_URL`
-6. Note: free tier spins down after 15 min inactivity — first request after idle takes ~30-50s
+2. Create new project on railway.app, connect GitHub repo
+3. Set root directory to `backend/`, Railway auto-detects Python via `requirements.txt` and reads `Procfile`
+4. Add environment variables in Railway dashboard
+5. Railway provides a public URL (`https://xxx.up.railway.app`); copy to `EXPO_PUBLIC_API_URL`
+6. $5 free credit — lasts ~3–4 months for a small app. Hobby plan $5/month after.
 
 ### 7.2 Mobile distribution
 
@@ -510,7 +510,7 @@ Supabase is hosted by default. No deployment required. Schema changes managed vi
 
 ### 8.3 Tooling
 
-- MVP: print + Render's built-in log viewer is enough
+- MVP: print + Railway's built-in log viewer is enough
 - Future: Sentry free tier for crash reporting (mobile + backend)
 
 ---
@@ -576,7 +576,7 @@ These are not in MVP, but the architecture should not block them.
 
 ### 10.5 Weekly digest
 
-- Add a scheduled job (Render cron job or Supabase Edge Function)
+- Add a scheduled job (Railway cron or Supabase Edge Function)
 - Query items from past week, group by folder, send push notification or email
 - Requires user accounts and notification tokens — defer until auth is added
 
@@ -593,7 +593,7 @@ For each major choice, why this over alternatives:
 | Database | Supabase (PostgreSQL) | Firebase, MongoDB Atlas | Free tier, real SQL, pgvector for future, dashboard |
 | AI provider | Gemini 3 Flash | GPT-4o-mini, Claude Haiku, Gemini 3.1 Flash-Lite | Most generous free tier remaining (1,500 RPD), structured JSON support, multimodal-ready for future image features |
 | Article fetcher | Jina Reader | Custom scraper, Diffbot | Free, no maintenance, clean output |
-| Hosting | Render | Railway, Fly.io, Vercel | Free forever (Railway dropped free tier after 30 days), deploys from GitHub, supports long-running Python |
+| Hosting | Railway | Render, Fly.io, Vercel | $5 credit lasts ~3–4 months for personal use; $5/month Hobby after; deploys from GitHub, supports long-running Python |
 | Language (mobile) | TypeScript | JavaScript | Type safety catches bugs early, mandatory at this scale |
 | Language (backend) | Python | Node, Go | AI library ecosystem, Pydantic for type safety |
 
