@@ -173,14 +173,14 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 1.4 Backend — AI service
 
-- [ ] Create `backend/services/ai.py`
-- [ ] Implement everything specified in `AI_FEATURE_SPEC.md` Section 10.2
-- [ ] Constant `ALLOWED_FOLDERS` matching the taxonomy
-- [ ] `build_prompt(content)` — uses template from spec Section 6.1
-- [ ] Handle low-info variant (spec Section 6.3)
-- [ ] `call_gemini(prompt)` — actual API call with config from spec Section 3.2
-- [ ] `validate(raw)` — strict validation per spec Section 8.1
-- [ ] `process_content(content) -> AIResult` — the single public function, with one retry and fallback
+- [x] Create `backend/services/ai.py`
+- [x] Implement everything specified in `AI_FEATURE_SPEC.md` Section 10.2
+- [x] Constant `ALLOWED_FOLDERS` matching the taxonomy
+- [x] `build_prompt(content)` — uses template from spec Section 6.1
+- [x] Handle low-info variant (spec Section 6.3)
+- [x] `call_gemini(prompt)` — actual API call with config from spec Section 3.2
+- [x] `validate(raw)` — strict validation per spec Section 8.1
+- [x] `process_content(content) -> AIResult` — the single public function, with one retry and fallback
 
 ### 1.5 Backend — Database service
 

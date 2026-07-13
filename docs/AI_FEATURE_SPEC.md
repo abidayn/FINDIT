@@ -62,7 +62,8 @@ These are explicitly post-MVP capabilities.
   "topP": 0.95,
   "topK": 40,
   "maxOutputTokens": 300,
-  "responseMimeType": "application/json"
+  "responseMimeType": "application/json",
+  "thinkingConfig": { "thinkingBudget": 0 }
 }
 ```
 
@@ -71,6 +72,7 @@ These are explicitly post-MVP capabilities.
 - **Low temperature (0.2):** Classification needs consistency. Same input should give same folder. Higher temp = creative variation, which is exactly what we don't want.
 - **maxOutputTokens 300:** Title + summary + folder fits comfortably in ~150 tokens. 300 gives headroom for the JSON wrapper without runaway generation.
 - **responseMimeType: application/json:** Gemini natively supports JSON-only output. This prevents the model from adding "Here's your JSON:" prefixes or markdown fences.
+- **thinkingBudget 0:** Gemini 3.x reasons before answering, and those thinking tokens count against `maxOutputTokens`. Measured on 2026-07-13: thinking alone consumed ~270 of the 300-token budget, leaving the JSON truncated to an empty string on every call. Classifying into 9 fixed folders requires no deliberation, so thinking is disabled — faster, cheaper, and more consistent. (`thinkingLevel: LOW` was also tried: still spent 212 tokens *and* emitted malformed JSON.)
 
 ### 3.3 Safety settings
 

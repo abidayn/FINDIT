@@ -33,6 +33,9 @@ class FetchedContent(BaseModel):
     """Output of fetcher.py, input to ai.py. Never raises — an empty `text`
     means the fetch failed, and the AI step still runs on whatever we have."""
 
+    # The prompt in AI_FEATURE_SPEC.md Section 6.1 includes the URL, so it has
+    # to travel with the content rather than being passed around separately.
+    url: str
     text: str = ""
     source_platform: Platform = "other"
     metadata: dict = Field(default_factory=dict)
