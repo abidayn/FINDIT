@@ -42,12 +42,12 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 0.2 Supabase project setup
 
-- [ ] Create account at supabase.com (free)
-- [ ] Create new project named `stash` (region: closest to Indonesia — Singapore)
-- [ ] Save the **Project URL** and **anon key** and **service key** somewhere secure
-- [ ] Open the SQL Editor and run the schema from `ARCHITECTURE.md` Section 3.3 to create the `items` table and indexes
-- [ ] Manually insert one test row via the dashboard to confirm the table works
-- [ ] (Skip Row Level Security for MVP — single user, no auth)
+- [x] Create account at supabase.com (free)
+- [x] Create new project named `stash` (region: closest to Indonesia — Singapore)
+- [x] Save the **Project URL** and **anon key** and **service key** somewhere secure
+- [x] Open the SQL Editor and run the schema from `ARCHITECTURE.md` Section 3.3 to create the `items` table and indexes
+- [x] Manually insert one test row via the dashboard to confirm the table works
+- [x] (Skip Row Level Security for MVP — single user, no auth)
 
 ### 0.3 Google AI Studio (Gemini) setup
 
@@ -75,16 +75,16 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 0.5 Backend project init (FastAPI)
 
-- [ ] In `backend/`, create Python virtual environment: `python -m venv venv && source venv/bin/activate`
-- [ ] Install dependencies: `pip install fastapi uvicorn python-dotenv supabase google-genai httpx pydantic`
-- [ ] Create `requirements.txt`: `pip freeze > requirements.txt`
-- [ ] Create `main.py` with a minimal FastAPI app:
+- [x] In `backend/`, create Python virtual environment: `python -m venv venv && source venv/bin/activate`
+- [x] Install dependencies: `pip install fastapi uvicorn python-dotenv supabase google-genai httpx pydantic`
+- [x] Create `requirements.txt`: `pip freeze > requirements.txt`
+- [x] Create `main.py` with a minimal FastAPI app:
   - Single `GET /health` endpoint returning `{"status": "ok"}`
   - CORS middleware allowing all origins (lock down later)
-- [ ] Create `.env` file with `GEMINI_API_KEY`, `YOUTUBE_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`
-- [ ] Create `.env.example` with the same keys but empty values (commit this one)
-- [ ] Run locally: `uvicorn main:app --reload --host 0.0.0.0 --port 8000`
-- [ ] Visit `http://localhost:8000/health` in browser, confirm response
+- [x] Create `.env` file with `GEMINI_API_KEY`, `YOUTUBE_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`
+- [x] Create `.env.example` with the same keys but empty values (commit this one)
+- [x] Run locally: `uvicorn main:app --reload --host 0.0.0.0 --port 8000`
+- [x] Visit `http://localhost:8000/health` in browser, confirm response
 - [ ] Visit `http://localhost:8000/docs` to see auto-generated Swagger UI
 
 ### 0.6 Backend deployment (Railway)
@@ -145,20 +145,20 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 1.1 Backend — Pydantic models and schemas
 
-- [ ] Create `backend/models/schemas.py`
-- [ ] Define `SaveRequest` (input: `url`)
-- [ ] Define `FetchedContent` (intermediate: `text`, `source_platform`, `metadata`, `thumbnail_url`)
-- [ ] Define `AIResult` (intermediate: `title`, `summary`, `folder`, `confidence`)
-- [ ] Define `Item` (database row + response: id, url, title, summary, folder, source, thumbnail_url, raw_content, created_at, confidence, ai_status)
-- [ ] Define `ErrorResponse` (output: `error`, `code`, `details`)
+- [x] Create `backend/models/schemas.py`
+- [x] Define `SaveRequest` (input: `url`)
+- [x] Define `FetchedContent` (intermediate: `text`, `source_platform`, `metadata`, `thumbnail_url`)
+- [x] Define `AIResult` (intermediate: `title`, `summary`, `folder`, `confidence`)
+- [x] Define `Item` (database row + response: id, url, title, summary, folder, source, thumbnail_url, raw_content, created_at, confidence, ai_status)
+- [x] Define `ErrorResponse` (output: `error`, `code`, `details`)
 
 ### 1.2 Backend — URL parser utility
 
-- [ ] Create `backend/utils/url_parser.py`
-- [ ] Function `detect_platform(url: str) -> str` returns one of: `"youtube"`, `"tiktok"`, `"instagram"`, `"twitter"`, `"article"`, `"other"`
-- [ ] Use simple domain matching (urllib.parse)
-- [ ] Handle edge cases: youtu.be short URLs, m.youtube.com, mobile.twitter.com, x.com
-- [ ] Add a `extract_youtube_id(url)` helper for YouTube URLs
+- [x] Create `backend/utils/url_parser.py`
+- [x] Function `detect_platform(url: str) -> str` returns one of: `"youtube"`, `"tiktok"`, `"instagram"`, `"twitter"`, `"article"`, `"other"`
+- [x] Use simple domain matching (urllib.parse)
+- [x] Handle edge cases: youtu.be short URLs, m.youtube.com, mobile.twitter.com, x.com
+- [x] Add a `extract_youtube_id(url)` helper for YouTube URLs
 
 ### 1.3 Backend — Fetcher service
 
@@ -184,14 +184,14 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 1.5 Backend — Database service
 
-- [ ] Create `backend/services/database.py`
-- [ ] Initialize Supabase client from env vars
-- [ ] Function `insert_item(item_data: dict) -> Item`
-- [ ] Function `get_all_items() -> list[Item]`
-- [ ] Function `get_items_by_folder(folder: str) -> list[Item]`
-- [ ] Function `search_items(query: str) -> list[Item]` — uses PostgreSQL `ILIKE` for now on title + summary
-- [ ] Function `delete_item(item_id: str) -> bool`
-- [ ] All functions raise on failure — caller handles errors
+- [x] Create `backend/services/database.py`
+- [x] Initialize Supabase client from env vars
+- [x] Function `insert_item(item_data: dict) -> Item`
+- [x] Function `get_all_items() -> list[Item]`
+- [x] Function `get_items_by_folder(folder: str) -> list[Item]`
+- [x] Function `search_items(query: str) -> list[Item]` — uses PostgreSQL `ILIKE` for now on title + summary
+- [x] Function `delete_item(item_id: str) -> bool`
+- [x] All functions raise on failure — caller handles errors
 
 ### 1.6 Backend — `/save` endpoint
 

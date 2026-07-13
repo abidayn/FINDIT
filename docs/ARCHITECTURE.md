@@ -218,7 +218,9 @@ CREATE TABLE items (
   thumbnail_url TEXT,                    -- nullable; may not always be available
   raw_content   TEXT,                    -- the fetched content, kept for future re-processing
   created_at    TIMESTAMPTZ DEFAULT NOW(),
-  user_id       UUID                     -- nullable in MVP (no auth); used later
+  user_id       UUID,                    -- nullable in MVP (no auth); used later
+  confidence    TEXT,                    -- 'high' | 'medium' | 'low' (AI_FEATURE_SPEC.md 4.4)
+  ai_status     TEXT DEFAULT 'ok'        -- 'ok' | 'failed'; 'failed' = saved with fallback values
 );
 
 CREATE INDEX idx_items_folder ON items(folder);
@@ -232,6 +234,8 @@ CREATE INDEX idx_items_search ON items USING gin(
 ```
 
 **Note on `user_id`:** Stored as nullable in MVP. Single-device, single-user. Auth gets added in a future iteration if/when the app opens to others. Adding the column now is cheaper than migrating later.
+
+**Note on `confidence` / `ai_status`:** Added after the initial schema was written. `AI_FEATURE_SPEC.md` Sections 8–9 depend on both, so they belong in the table rather than being recomputed. `ai_status = 'failed'` marks items saved with fallback values, so a future job can re-process them.
 
 **Note on `raw_content`:** Stored to allow future re-processing if we improve the AI pipeline or want to add semantic search later without re-fetching. Optional, but cheap insurance.
 
