@@ -89,13 +89,13 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 0.6 Backend deployment (Railway)
 
-- [ ] Create account at railway.app — sign up with GitHub
-- [ ] New Project → Deploy from GitHub repo → select `abidayn/FINDIT`
-- [ ] Set root directory to `backend/` in service settings
-- [ ] Add all environment variables in Railway dashboard (same keys as `backend/.env`)
-- [ ] Confirm deploy succeeds — check logs for `Application startup complete`
-- [ ] Visit the Railway-provided URL + `/health`, confirm it works publicly
-- [ ] Save the Railway URL — this is your `EXPO_PUBLIC_API_URL`
+- [x] Create account at railway.app — sign up with GitHub
+- [x] New Project → Deploy from GitHub repo → select `abidayn/FINDIT`
+- [x] Set root directory to `backend/` in service settings
+- [x] Add all environment variables in Railway dashboard (same keys as `backend/.env`)
+- [x] Confirm deploy succeeds — check logs for `Application startup complete`
+- [x] Visit the Railway-provided URL + `/health`, confirm it works publicly
+- [x] Save the Railway URL — this is your `EXPO_PUBLIC_API_URL`
 
 ### 0.7 Mobile project init (React Native + Expo)
 
