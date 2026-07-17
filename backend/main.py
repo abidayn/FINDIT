@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import ALLOWED_ORIGINS
+from routes.save import router as save_router
 
 app = FastAPI(title="Stash API")
 
@@ -11,6 +12,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(save_router)
 
 
 @app.get("/health")

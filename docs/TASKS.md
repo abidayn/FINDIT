@@ -195,27 +195,27 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 1.6 Backend — `/save` endpoint
 
-- [ ] Create `backend/routes/save.py`
-- [ ] `POST /save` accepts `SaveRequest`, returns `Item` (or `ErrorResponse`)
-- [ ] Pipeline:
+- [x] Create `backend/routes/save.py`
+- [x] `POST /save` accepts `SaveRequest`, returns `Item` (or `ErrorResponse`)
+- [x] Pipeline:
   1. Validate URL is well-formed
   2. Detect platform via url_parser
   3. Call `fetcher.fetch_content(url)`
   4. Call `ai.process_content(fetched)`
   5. Build database row and call `database.insert_item(...)`
   6. Return the new item
-- [ ] Handle errors at each step — failed fetch should still try AI; failed AI should still save; failed DB returns error
-- [ ] Wire the route into `main.py`
+- [x] Handle errors at each step — failed fetch should still try AI; failed AI should still save; failed DB returns error
+- [x] Wire the route into `main.py`
 
 ### 1.7 Backend — Test the save flow manually
 
-- [ ] Use Swagger UI (`/docs`) or curl to POST a URL to `/save`
-- [ ] Test with an article URL (should be HIGH quality output)
-- [ ] Test with a YouTube URL (should be MEDIUM quality output)
-- [ ] Test with a TikTok URL (should be LOW quality output, use fallback)
-- [ ] Test with an invalid URL (should return error gracefully)
-- [ ] Check Supabase dashboard — rows should be appearing
-- [ ] Check Railway logs — should see one log line per request
+- [x] Use Swagger UI (`/docs`) or curl to POST a URL to `/save`
+- [x] Test with an article URL (should be HIGH quality output)
+- [x] Test with a YouTube URL (should be MEDIUM quality output)
+- [x] Test with a TikTok URL (should be LOW quality output, use fallback)
+- [x] Test with an invalid URL (should return error gracefully)
+- [x] Check Supabase dashboard — rows should be appearing
+- [x] Check Railway logs — should see one log line per request
 
 ### 1.8 Mobile — Share intent integration
 
