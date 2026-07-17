@@ -63,15 +63,15 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 0.4 Google Cloud / YouTube Data API setup
 
-- [ ] Go to console.cloud.google.com, create a new project named `stash`
-- [ ] Enable "YouTube Data API v3" for the project
-- [ ] Create an API key (Credentials → Create credentials → API key)
-- [ ] Restrict the key to YouTube Data API v3 only (for safety)
-- [ ] Test with curl:
+- [x] Go to console.cloud.google.com, create a new project named `stash`
+- [x] Enable "YouTube Data API v3" for the project
+- [x] Create an API key (Credentials → Create credentials → API key)
+- [x] Restrict the key to YouTube Data API v3 only (for safety)
+- [x] Test with curl:
   ```bash
   curl "https://www.googleapis.com/youtube/v3/videos?id=dQw4w9WgXcQ&part=snippet&key=YOUR_KEY"
   ```
-- [ ] Save the key — it's a different key from the Gemini one
+- [x] Save the key — it's a different key from the Gemini one
 
 ### 0.5 Backend project init (FastAPI)
 
@@ -162,14 +162,14 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 1.3 Backend — Fetcher service
 
-- [ ] Create `backend/services/fetcher.py`
-- [ ] Implement `fetch_content(url: str) -> FetchedContent`
-- [ ] For articles: call Jina Reader (`https://r.jina.ai/{url}`), parse markdown response
-- [ ] For YouTube: call YouTube Data API v3 `/videos?id={id}&part=snippet`, concatenate title + description + tags
-- [ ] For TikTok/Instagram/Twitter: extract minimal Open Graph metadata via `httpx` + simple HTML parse
-- [ ] All fetches must have a 10-second timeout
-- [ ] On any failure, return `FetchedContent(text="", source_platform=detected, metadata={})` — never raise
-- [ ] Log warnings for failures so you can debug later
+- [x] Create `backend/services/fetcher.py`
+- [x] Implement `fetch_content(url: str) -> FetchedContent`
+- [x] For articles: call Jina Reader (`https://r.jina.ai/{url}`), parse markdown response
+- [x] For YouTube: call YouTube Data API v3 `/videos?id={id}&part=snippet`, concatenate title + description + tags
+- [x] For TikTok/Instagram/Twitter: extract minimal Open Graph metadata via `httpx` + simple HTML parse
+- [x] All fetches must have a 10-second timeout
+- [x] On any failure, return `FetchedContent(text="", source_platform=detected, metadata={})` — never raise
+- [x] Log warnings for failures so you can debug later
 
 ### 1.4 Backend — AI service
 
