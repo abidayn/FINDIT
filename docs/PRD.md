@@ -70,7 +70,7 @@ Indonesia first (builder's network, Android-dominant market), but the product is
 
 ### 4.1 Goals (in priority order)
 
-1. **Learning:** Build hands-on experience across React Native, FastAPI, Supabase, LLM APIs, and content-processing pipelines.
+1. **Learning:** Build hands-on experience across Flutter, FastAPI, Supabase, LLM APIs, and content-processing pipelines. Mobile (Flutter/Dart) is being deliberately learned as its own specialization, separate from a future web-dev track — see `ARCHITECTURE.md` Section 11 for the reasoning.
 2. **Self-use:** Builder uses the app daily for own saved content within 4 weeks of build start.
 3. **Working MVP:** End-to-end flow (share → process → save → search) functioning reliably on Android.
 4. **Resume artifact:** A real, deployed project to discuss in internship interviews with concrete technical decisions to defend.
@@ -272,7 +272,7 @@ Because this is a learning project with no business goals, success is measured i
 
 ### 11.2 Assumptions
 
-- The Android share sheet integration is achievable with publicly available React Native libraries (e.g., `expo-share-intent`).
+- The Android share sheet integration is achievable with publicly available Flutter packages (e.g., `receive_sharing_intent` or a current maintained equivalent — see `ARCHITECTURE.md` Section 3.1).
 - Jina Reader API remains free and reliable for article extraction.
 - YouTube Data API v3 free tier (10,000 units/day) is sufficient for personal volume.
 - Gemini 3 Flash free tier (10 RPM, 1,500 RPD as of mid-2026) is sufficient for development volume. Limits may shift; verify current quotas in Google AI Studio before launch.

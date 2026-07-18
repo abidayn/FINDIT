@@ -64,7 +64,7 @@ Before writing any implementation:
 
 - Before adding code to an existing file, **read that file's existing exports, the functions that call into it, and any obvious shared utilities** (`lib/`, `utils/`, `constants.ts`, `schemas.py`).
 - Do not create a function that may duplicate or shadow an existing one. Check first.
-- This matters most for: `mobile/lib/api.ts`, `mobile/types/index.ts`, `backend/models/schemas.py`, and the `services/` files — the shared surfaces.
+- This matters most for: `mobile/lib/services/api_client.dart`, `mobile/lib/models/`, `backend/models/schemas.py`, and the `services/` files — the shared surfaces.
 
 ### Gap Rule D — Fail Loud
 
@@ -95,11 +95,13 @@ When the builder references "the spec," "the architecture," or "the tasks," they
 These decisions are made. Do not suggest alternatives unless explicitly asked or unless a hard blocker is hit.
 
 ### Mobile
-- **React Native + Expo** (bare workflow — needed for share intent)
-- **TypeScript** (no plain JavaScript)
-- **Expo Router** (file-based routing in `app/`)
-- **expo-share-intent** (Android share sheet integration)
-- **@supabase/supabase-js** (direct reads where appropriate)
+- **Flutter** (Android-first; iOS deferred per Known Constraints)
+- **Dart** (Flutter's native language — no other mobile language)
+- **go_router** (declarative routing, official Flutter-recommended package)
+- **receive_sharing_intent** (or its `_plus` fork if the original is unmaintained at implementation time — verify on pub.dev before installing, same lesson as the Expo SDK incident: check current package health, don't assume from memory) (Android share sheet integration)
+- **supabase_flutter** (official Supabase SDK for Dart; direct reads where appropriate)
+
+**Why the switch from React Native + Expo (2026-07-18):** The original choice is documented in `ARCHITECTURE.md` Section 11 alongside the reasoning for switching. Short version: the builder decided to specialize in mobile development (Flutter) as a distinct skill track from web development (to be learned separately later) rather than staying JS/TS-generalist across both. This was a deliberate scope/learning decision, not a reaction to the Expo SDK version issue encountered during setup (that issue was independently diagnosed and fixable).
 
 ### Backend
 - **FastAPI** (Python)
@@ -130,12 +132,14 @@ Follow this structure exactly. Full version in `ARCHITECTURE.md` Section 5.
 
 ```
 stash/
-├── mobile/          # React Native + Expo (TypeScript)
-│   ├── app/         # Screens (Expo Router)
-│   ├── components/  # Reusable UI
-│   ├── lib/         # api.ts, supabase.ts, constants.ts
-│   ├── hooks/       # useItems, useSearch, useShareIntent
-│   └── types/       # Shared TypeScript types
+├── mobile/          # Flutter (Dart)
+│   ├── lib/
+│   │   ├── screens/     # Full-page widgets (home, search, save)
+│   │   ├── widgets/     # Reusable UI (ItemCard, FolderBadge, etc.)
+│   │   ├── services/    # api_client.dart, supabase_client.dart
+│   │   ├── models/      # Item, Folder — mirrors backend/models/schemas.py
+│   │   └── main.dart    # App entry point, router setup
+│   └── android/         # Native Android project (share intent config lives here)
 ├── backend/         # FastAPI (Python)
 │   ├── main.py
 │   ├── routes/      # save.py, items.py, search.py
@@ -158,7 +162,7 @@ These are non-negotiable. Violating them creates security holes or maintenance n
 
 3. **API keys are split by environment:**
    - `GEMINI_API_KEY`, `YOUTUBE_API_KEY`, `SUPABASE_SERVICE_KEY` → backend `.env` ONLY
-   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_API_URL` → mobile `.env` (safe to ship)
+   - Supabase anon/publishable key and the backend API URL → mobile, injected via `--dart-define` at build time or read from a bundled config file not committed to git (Flutter has no `.env`-at-runtime convention like Expo's `EXPO_PUBLIC_*`; pick one approach when task 0.7-equivalent starts and document it here)
    - The Supabase **service key** must NEVER appear in mobile code.
 
 4. **AI output is untrusted input.** Always validate Gemini's JSON response against the schema before saving (see `AI_FEATURE_SPEC.md` Section 8). Auto-correct invalid folders to "Other," never crash.
@@ -178,11 +182,11 @@ These are non-negotiable. Violating them creates security holes or maintenance n
 - Add brief comments explaining *why*, not *what*, especially for non-obvious decisions.
 - When introducing a new concept (e.g., embeddings, async, decorators), add a one-line explanation so the builder learns.
 
-### TypeScript (mobile)
-- No `any` types unless genuinely unavoidable, and then with a comment explaining why.
-- Mirror backend Pydantic models in `mobile/types/index.ts`. Keep them in sync.
-- Prefer functional components and hooks. No class components.
-- Extract repeated UI into components in `components/`.
+### Dart (mobile)
+- Enable and respect Dart's null safety fully — no `!` (bang operator) as a substitute for real null handling unless genuinely unavoidable, and then with a comment explaining why.
+- Mirror backend Pydantic models as Dart classes in `mobile/lib/models/`. Keep field names and types in sync with `backend/models/schemas.py`.
+- Prefer `StatelessWidget`/`StatefulWidget` composition over deep inheritance. Extract repeated UI into widgets in `lib/widgets/`.
+- Follow standard Dart formatting (`dart format`) and lints (`flutter analyze` clean before considering a change done).
 
 ### Python (backend)
 - Use type hints everywhere. Pydantic models for all I/O.

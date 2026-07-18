@@ -34,7 +34,7 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 ### 0.1 Repository setup
 
 - [ ] Create new GitHub repo named `stash` (or final project name)
-- [ ] Add `.gitignore` covering Python (`__pycache__`, `.env`, `venv/`) and Node (`node_modules`, `.expo`, `*.log`)
+- [ ] Add `.gitignore` covering Python (`__pycache__`, `.env`, `venv/`) and Flutter/Dart (`.dart_tool/`, `build/`, `android/local.properties`, `*.iml`)
 - [ ] Add empty `README.md` with project name and one-line description
 - [ ] Create root folder structure: `mobile/`, `backend/`, `docs/`
 - [ ] Move `PRD.md`, `ARCHITECTURE.md`, `AI_FEATURE_SPEC.md`, and this file into `docs/`
@@ -95,25 +95,25 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 - [x] Add all environment variables in Railway dashboard (same keys as `backend/.env`)
 - [x] Confirm deploy succeeds — check logs for `Application startup complete`
 - [x] Visit the Railway-provided URL + `/health`, confirm it works publicly
-- [x] Save the Railway URL — this is your `EXPO_PUBLIC_API_URL`
+- [x] Save the Railway URL — this is the backend API URL the mobile app will call
 
-### 0.7 Mobile project init (React Native + Expo)
+### 0.7 Mobile project init (Flutter)
 
-- [ ] In `mobile/`, run `npx create-expo-app@latest . --template`
-- [ ] Choose "Blank (TypeScript)" template
-- [ ] Install Expo Router: `npx expo install expo-router react-native-safe-area-context react-native-screens`
-- [ ] Configure `app.json` for Expo Router (entry point, scheme name)
-- [ ] Create `app/_layout.tsx` and `app/index.tsx` (basic hello world screen)
-- [ ] Install additional deps: `npx expo install @supabase/supabase-js expo-share-intent`
-- [ ] Create `.env` file with `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-- [ ] Run: `npx expo start` and scan QR with Expo Go app on your phone
-- [ ] Confirm "hello world" screen renders on phone
+- [x] Install the Flutter SDK and Android SDK/toolchain (Android Studio, or standalone `cmdline-tools` + `adb`) if not already present
+- [x] Run `flutter doctor` and resolve any blockers before continuing (missing Android licenses, missing `adb`, etc.)
+- [ ] In the repo root, run `flutter create mobile` (creates the full Flutter project, including a real `android/` native folder — no separate "prebuild" step exists in Flutter)
+- [ ] Add `go_router` to `pubspec.yaml` (`flutter pub add go_router`), set up a minimal router in `lib/main.dart`
+- [ ] Replace the default counter-app `lib/main.dart` with a basic hello-world screen (`lib/screens/home_screen.dart`)
+- [ ] Add `supabase_flutter` and a share-intent package (verify current maintained choice on pub.dev — see `ARCHITECTURE.md` 3.1) via `flutter pub add`
+- [ ] Decide and document the config-injection approach (`--dart-define` vs bundled non-committed asset file — see `ARCHITECTURE.md` 6.1) for the backend API URL and Supabase URL/anon key
+- [ ] Run `flutter run` with a USB-connected Android device (or emulator) — this installs a real debug build directly, no separate preview app needed
+- [ ] Confirm the hello-world screen renders on the device
 
 ### 0.8 Connect mobile to backend (the round-trip)
 
-- [ ] In `mobile/lib/api.ts`, create a function `fetchHealth()` that calls `${EXPO_PUBLIC_API_URL}/health`
-- [ ] In `app/index.tsx`, call it on mount and display the response
-- [ ] Confirm on phone: app loads → calls Railway backend → shows "status: ok"
+- [ ] In `mobile/lib/services/api_client.dart`, create a function `fetchHealth()` that calls `{API_URL}/health`
+- [ ] In the home screen, call it on load (e.g., in `initState` or a `FutureBuilder`) and display the response
+- [ ] Confirm on device: app loads → calls Railway backend → shows "status: ok"
 - [ ] This is the moment your two systems are talking. Celebrate small.
 
 ### Phase 0 — Definition of Done
@@ -130,7 +130,7 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 - **Committing `.env` to git** — double-check `.gitignore` BEFORE first commit
 - **Mixing up Supabase keys** — `anon` key is for client (mobile), `service` key is for server (backend). Never put service key on mobile.
 - **Railway idle sleep** — backend may take 10s to respond after inactivity on free credit. Normal.
-- **Expo Go vs dev client** — share intent does NOT work in Expo Go. We will need a dev client build in Phase 1.
+- **Android toolchain setup friction** — `flutter doctor` catches most issues (missing SDK, unaccepted licenses, no connected device) before they turn into confusing runtime errors. Run it first whenever something mobile-side won't build.
 - **Forgetting CORS** — backend must allow requests from mobile origin. For MVP set `allow_origins=["*"]`.
 
 ---
@@ -219,33 +219,31 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 1.8 Mobile — Share intent integration
 
-- [ ] In `app.json`, configure `expo-share-intent` plugin for Android
-- [ ] Specify the app should accept `text/plain` (URLs are shared as plain text)
-- [ ] Run `npx expo prebuild --platform android` to generate native folders
-- [ ] Run `npx expo run:android` to install a dev client on your phone
-- [ ] In `app/_layout.tsx`, set up share intent listener using `useShareIntent` hook
-- [ ] On receiving a shared URL, navigate to a save screen (or show a modal)
+- [ ] Add the chosen share-intent package (see `ARCHITECTURE.md` 3.1) to `pubspec.yaml`
+- [ ] In `android/app/src/main/AndroidManifest.xml`, add an intent filter for `ACTION_SEND` with MIME type `text/plain` so the app appears in the Android share sheet
+- [ ] In `lib/services/share_intent_service.dart`, listen for incoming shared text/URLs per the package's API (typically a stream you subscribe to at app start)
+- [ ] On receiving a shared URL, navigate (via `go_router`) to the save screen with the URL as a parameter
 - [ ] Test: open TikTok → share a video → "Share to" → see Stash in the list → tap it → app opens with the URL
 
 ### 1.9 Mobile — Save screen
 
-- [ ] Create `app/save.tsx` (route)
-- [ ] Receives URL via search params or share intent
+- [ ] Create `lib/screens/save_screen.dart`, registered as a `go_router` route
+- [ ] Receives URL via route parameter (from share intent, or a manual "paste URL" entry point)
 - [ ] Shows "Saving..." state with the URL displayed
-- [ ] Calls backend `POST /save` via `lib/api.ts`
+- [ ] Calls backend `POST /save` via `api_client.dart`
 - [ ] On success: shows the result (title, summary, folder badge) and "Done" button
 - [ ] On failure: shows error message and "Retry" button
 - [ ] After save, allow user to return to source app (or close)
 
 ### 1.10 Mobile — API client
 
-- [ ] In `mobile/lib/api.ts`, create typed functions:
-  - `saveItem(url: string): Promise<Item>`
-  - `getAllItems(): Promise<Item[]>`
-  - `searchItems(query: string): Promise<Item[]>`
-  - `deleteItem(id: string): Promise<void>`
-- [ ] Wrap all calls with error handling — return typed error objects
-- [ ] Mirror types from `backend/models/schemas.py` in `mobile/types/index.ts`
+- [ ] In `mobile/lib/services/api_client.dart`, create typed functions:
+  - `Future<Item> saveItem(String url)`
+  - `Future<List<Item>> getAllItems()`
+  - `Future<List<Item>> searchItems(String query)`
+  - `Future<void> deleteItem(String id)`
+- [ ] Wrap all calls with error handling — throw typed exceptions the UI can catch and display
+- [ ] Mirror types from `backend/models/schemas.py` as Dart classes in `mobile/lib/models/item.dart`
 
 ### Phase 1 — Definition of Done
 
@@ -258,9 +256,9 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### Phase 1 — Common Pitfalls
 
-- **Trying to make share intent work in Expo Go.** It won't. Use dev client build.
+- **Share intent needs a real device or emulator with Google Play services.** Not all emulator images support the share sheet properly — test on a real device if the emulator behaves oddly.
 - **CORS errors after deploy.** Backend on Railway, mobile testing on phone — different origins. Confirm CORS allows your Railway URL.
-- **API keys in mobile bundle.** Only `EXPO_PUBLIC_*` keys should be in `mobile/.env`. Gemini and YouTube keys ONLY in backend.
+- **API keys in mobile bundle.** Only the backend API URL and Supabase anon/publishable key belong in the mobile build config. Gemini and YouTube keys ONLY in backend.
 - **Forgetting to handle the "AI returns junk JSON" case.** The validation logic in spec is there for a reason — test it.
 - **Building UI polish in Phase 1.** Save screen can be ugly. We polish in Phase 3.
 
@@ -290,61 +288,57 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 - [ ] If query is empty string, return all items
 - [ ] If query has fewer than 2 characters, return empty list (avoid noisy results)
 
-### 2.3 Mobile — Item types and hooks
+### 2.3 Mobile — Item model and data services
 
-- [ ] In `mobile/types/index.ts`, mirror the `Item` shape from backend
-- [ ] Define `Folder` type as a union of the 9 allowed values
-- [ ] Create `mobile/hooks/useItems.ts`:
-  - Fetches all items on mount
-  - Exposes `items`, `loading`, `error`, `refetch()`
-- [ ] Create `mobile/hooks/useSearch.ts`:
-  - Accepts a query string, debounces by 300ms
-  - Returns search results
-- [ ] Create `mobile/lib/constants.ts` exporting `FOLDERS` array and per-folder colors
+- [ ] In `mobile/lib/models/item.dart`, mirror the `Item` shape from backend (a plain Dart class with a `fromJson` factory)
+- [ ] Define `Folder` as a Dart `enum` with the 9 allowed values
+- [ ] In `api_client.dart` (or a small `items_repository.dart`), expose functions to fetch all items and search — plain `Future`-returning functions are enough; no hooks equivalent needed for an app this size
+- [ ] For search debouncing (300ms), use a `Timer` that gets cancelled/reset on each keystroke in the search screen's state
+- [ ] Create `mobile/lib/constants.dart` exporting the folder list and per-folder colors
 
-### 2.4 Mobile — ItemCard component
+### 2.4 Mobile — ItemCard widget
 
-- [ ] Create `mobile/components/ItemCard.tsx`
-- [ ] Props: `item: Item`, `onPress: () => void`
+- [ ] Create `mobile/lib/widgets/item_card.dart`
+- [ ] Constructor params: `item` (Item), `onTap` (VoidCallback)
 - [ ] Layout: thumbnail (or platform icon as fallback) on left, title + summary on right, folder badge at top-right
-- [ ] Tappable area triggers `onPress`
+- [ ] Wrap in `InkWell`/`GestureDetector` to trigger `onTap`
 - [ ] Long-press shows a delete option (post-MVP polish, skip for now)
 - [ ] Use platform-appropriate icons for source (YouTube logo, TikTok logo, link icon for articles)
 
-### 2.5 Mobile — FolderBadge component
+### 2.5 Mobile — FolderBadge widget
 
-- [ ] Create `mobile/components/FolderBadge.tsx`
-- [ ] Props: `folder: Folder`
+- [ ] Create `mobile/lib/widgets/folder_badge.dart`
+- [ ] Constructor param: `folder` (Folder)
 - [ ] Renders a small colored pill with the folder name
-- [ ] Colors mapped from `lib/constants.ts`
+- [ ] Colors mapped from `constants.dart`
 
 ### 2.6 Mobile — Home screen
 
-- [ ] Update `app/index.tsx` to be the home screen
-- [ ] Use `useItems` hook to fetch all items
+- [ ] Update `lib/screens/home_screen.dart` to be the home screen
+- [ ] Fetch all items on load (`FutureBuilder` or a simple `StatefulWidget` + `setState` after an async call)
 - [ ] Show loading skeleton (or spinner) while loading
 - [ ] Show empty state if no items: "Nothing saved yet. Share a link to get started."
-- [ ] FlatList of `ItemCard`s
-- [ ] Tap card → open original URL in browser (use `Linking.openURL`)
-- [ ] Header has a search icon → navigates to search screen
-- [ ] Pull-to-refresh triggers `refetch()`
+- [ ] `ListView.builder` of `ItemCard`s (lazy by default — no extra config needed for basic performance)
+- [ ] Tap card → open original URL in browser (`url_launcher` package's `launchUrl`)
+- [ ] Header has a search icon → navigates to search screen via `go_router`
+- [ ] Wrap the list in a `RefreshIndicator` for pull-to-refresh
 
 ### 2.7 Mobile — Folder filter
 
-- [ ] Add a horizontal scrollable row of folder chips above the list
+- [ ] Add a horizontal scrollable row of folder chips above the list (`ListView` with `scrollDirection: Axis.horizontal`, or Flutter's `ChoiceChip` widgets)
 - [ ] "All" chip is default selected
 - [ ] Tapping a folder chip filters the list to that folder
 - [ ] Show count next to each folder (e.g., "Self Growth (12)")
-- [ ] State management: local React state, no global store needed yet
+- [ ] State management: local Flutter state (`setState`) is enough — no external state management package needed yet
 
 ### 2.8 Mobile — Search screen
 
-- [ ] Create `app/search.tsx`
-- [ ] SearchBar component at top (custom or use `expo-router` header)
-- [ ] Below: results list using `useSearch` hook
+- [ ] Create `lib/screens/search_screen.dart`, registered as a `go_router` route
+- [ ] Search input at top (`TextField`, e.g. inside the `AppBar`)
+- [ ] Below: results list from the debounced search call in 2.3
 - [ ] Empty state when no query: "Type to search your saves"
 - [ ] Empty state when no results: "No matches for 'XYZ'"
-- [ ] Same `ItemCard` component for results
+- [ ] Same `ItemCard` widget for results
 - [ ] Tap result → open original URL
 
 ### 2.9 Manual testing
@@ -367,10 +361,10 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### Phase 2 — Common Pitfalls
 
-- **Re-fetching on every screen mount.** Use a state management approach that caches between screens.
+- **Re-fetching on every screen mount.** Cache the last fetch in state that survives navigation (e.g., hoist it above the route, or a simple in-memory cache) rather than re-hitting the backend every time a screen builds.
 - **Search firing on every keystroke.** Debounce (300ms) — otherwise you'll hit the backend on every letter.
-- **FlatList performance with 100+ items.** Use `keyExtractor`, set `initialNumToRender`, avoid inline functions in `renderItem`.
-- **Opening TikTok URLs in browser instead of TikTok app.** `Linking.openURL` should default to native handler, but test on real device.
+- **`ListView` performance with 100+ items.** Always use `ListView.builder` (lazy), never `ListView(children: [...])` with a fully-materialized list.
+- **Opening TikTok URLs in browser instead of TikTok app.** `url_launcher`'s `launchUrl` should default to the native handler, but test on a real device.
 
 ---
 
@@ -412,30 +406,30 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 - [ ] Pick a single accent color and apply consistently
 - [ ] Folder badges have distinct, accessible colors
 - [ ] Card spacing and typography feel intentional, not default
-- [ ] Add subtle haptic feedback on tap (use `expo-haptics`)
-- [ ] App icon and splash screen replaced from Expo defaults (use a simple monochrome icon)
+- [ ] Add subtle haptic feedback on tap (Flutter's built-in `HapticFeedback` class — no extra package needed)
+- [ ] App icon and splash screen replaced from Flutter defaults (use `flutter_launcher_icons` package, or manually replace the assets in `android/app/src/main/res/`)
 
 ### 3.6 Performance check
 
 - [ ] Save 100+ items and confirm home screen still loads in under 1 second
 - [ ] Search latency remains under 500ms
 - [ ] No frame drops while scrolling
-- [ ] Memory usage stays reasonable (check with Android Studio profiler if curious)
+- [ ] Memory usage stays reasonable (check with Flutter DevTools or the Android Studio profiler if curious)
 
 ### 3.7 Refactor and cleanup
 
-- [ ] Remove all `console.log` debug statements
-- [ ] Move all hardcoded strings to a `constants.ts`
-- [ ] Extract repeated styles into shared style objects
-- [ ] Ensure all TypeScript types are correct (no `any` unless justified)
-- [ ] Run a final lint pass
+- [ ] Remove all leftover `print`/`debugPrint` debug statements
+- [ ] Move all hardcoded strings to `constants.dart`
+- [ ] Extract repeated styles into shared `ThemeData`/`TextStyle` objects
+- [ ] Ensure `flutter analyze` is clean (no unresolved type or null-safety warnings)
+- [ ] Run `dart format .` for consistent formatting
 
 ### Phase 3 — Definition of Done
 
 ✅ App handles errors gracefully without crashing
 ✅ All loading and empty states are handled
 ✅ Visual style is consistent across screens
-✅ App icon and splash screen are not Expo defaults
+✅ App icon and splash screen are not Flutter defaults
 ✅ Performance is acceptable with 100+ items
 ✅ Code is clean enough to share publicly on GitHub
 
@@ -490,7 +484,7 @@ This is where the product becomes real.
 
 ### 4.6 Optional: open to early users
 
-- [ ] Generate an APK build via `eas build --platform android --profile preview`
+- [ ] Generate an APK build via `flutter build apk --release`
 - [ ] Share with 3–5 friends or networks members
 - [ ] Get their feedback after 1 week of their use
 - [ ] Decide: keep going, pivot, or wind down

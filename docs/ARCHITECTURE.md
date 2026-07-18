@@ -24,7 +24,7 @@ Audience: the builder (Biday), future contributors, and Claude Code while vibe c
 │                       USER'S ANDROID PHONE                       │
 │                                                                  │
 │  ┌──────────────┐         ┌─────────────────────────────────┐  │
-│  │  TikTok / IG │         │      Stash App (React Native)   │  │
+│  │  TikTok / IG │         │      Stash App (Flutter)        │  │
 │  │  YouTube /   │ ──────▶ │                                 │  │
 │  │  Chrome /etc │  share  │  - Home screen (list items)     │  │
 │  └──────────────┘         │  - Search screen                │  │
@@ -90,38 +90,34 @@ Total target latency: **under 5 seconds** for articles and YouTube; **under 2 se
 
 ## 3. Component-by-Component Breakdown
 
-### 3.1 Mobile App (React Native + Expo)
+### 3.1 Mobile App (Flutter)
 
 **Role:** The user-facing layer. Receives shares, displays saved items, lets user search and browse.
 
-**Why React Native + Expo:**
-- Single codebase, JavaScript/TypeScript ecosystem
-- TypeScript skills transfer directly to web dev (Next.js, React)
-- Expo handles 90% of the build/deploy pain that bare React Native has
-- Huge community, plenty of tutorials for first-timers
-- Free to develop and ship to Android
+**Why Flutter (switched from React Native + Expo on 2026-07-18):**
+- The original React Native + Expo choice hit a real setup blocker: `create-expo-app` pulled Expo SDK 57 (released 2026-06-30), and the Expo Go app on the iOS/Android app stores hadn't caught up to support it yet — a known, documented lag in how Expo Go ships (see Expo's own changelog: the same thing happened with SDK 55 in May 2026). This was fixable (downgrading to SDK 56 got most of the way there), but it surfaced a broader decision point.
+- Independent of that blocker, the builder decided to specialize: learn mobile development deeply via Flutter/Dart as its own track, and learn web development (React/Next.js) separately later, rather than staying inside one JS/TS-generalist stack for both. This is a **deliberate learning-scope decision**, not just a reaction to the Expo issue — worth being able to articulate clearly in an interview: "I chose to build depth in one mobile framework rather than stretch a single language across mobile and web."
+- Flutter is compiled (AOT for release builds), so there's no "app store hasn't caught up to my SDK yet" category of problem — the app is a self-contained binary.
+- Single codebase for the future iOS port (still deferred per Known Constraints, but architecturally free when the day comes).
+- Excellent official documentation and a mature, stable widget/routing ecosystem (`go_router` is explicitly in Flutter-team-maintained "feature complete, stability-focused" mode as of mid-2026 — not a fast-moving target like a brand-new Expo SDK).
 
-**Key libraries:**
+**Key packages** (verify exact versions on [pub.dev](https://pub.dev) at implementation time — same lesson learned from the Expo SDK incident: don't assume a package choice from documentation is still the actively-maintained one):
 
-| Library | Purpose |
+| Package | Purpose |
 |---------|---------|
-| `expo` | Core Expo framework |
-| `expo-router` | File-based routing (like Next.js) — screens are files in `app/` |
-| `expo-share-intent` | Receives shared URLs from other apps via Android share sheet |
-| `@supabase/supabase-js` | Connect to Supabase (auth + DB) |
-| `react-native-async-storage` | Local cache for offline-friendly browsing |
-| `nativewind` (optional) | Tailwind for React Native — fast styling |
-
-**Why "bare workflow" instead of "managed workflow":**
-
-Expo has two modes. Managed is easier but limits native customization. Share intent needs native config (registering the app in Android's share sheet), so we use the **bare workflow** — Expo tools + the ability to edit native Android files when needed. The `expo prebuild` command generates the native folders on demand.
+| `flutter` (SDK) | Core framework |
+| `go_router` | Declarative routing — official Flutter-recommended package |
+| `receive_sharing_intent` | Receives shared URLs from other apps via Android share sheet. As of mid-2026 the original package was reported unmaintained; check pub.dev for whether `receive_sharing_intent_plus` (a maintained fork) or a newer alternative is the current best choice before installing |
+| `supabase_flutter` | Official Supabase SDK for Dart (auth + DB) |
+| `http` or `dio` | HTTP client for calling the backend API |
+| `shared_preferences` | Local cache for offline-friendly browsing |
 
 **What lives where:**
-- **Screens** (`app/`) — what the user sees
-- **Components** (`components/`) — reusable UI pieces
-- **Lib** (`lib/`) — API calls, Supabase client, helpers
-- **Hooks** (`hooks/`) — shared state and data-fetching logic
-- **Types** (`types/`) — TypeScript type definitions shared across files
+- **Screens** (`lib/screens/`) — full-page widgets, what the user sees
+- **Widgets** (`lib/widgets/`) — reusable UI pieces
+- **Services** (`lib/services/`) — API calls, Supabase client, helpers
+- **Models** (`lib/models/`) — Dart classes mirroring `backend/models/schemas.py`
+- **Android native config** (`android/`) — where the share-sheet intent filter is registered (Flutter always has a real native Android project, unlike Expo's managed workflow — there's no separate "prebuild" step to opt into)
 
 ---
 
@@ -275,7 +271,7 @@ CREATE INDEX idx_items_search ON items USING gin(
 
 ```
 1. User: shares https://youtube.com/watch?v=abc123 from YouTube app
-2. App receives URL via expo-share-intent
+2. App receives URL via receive_sharing_intent (or current equivalent — see 3.1)
 3. App: POST /save { "url": "https://youtube.com/watch?v=abc123" }
 4. Backend /save:
    a. Validates URL → OK
@@ -329,40 +325,36 @@ CREATE INDEX idx_items_search ON items USING gin(
 ```
 stash/
 │
-├── mobile/                              # React Native + Expo app
-│   ├── app/                             # Screens (file-based routing)
-│   │   ├── _layout.tsx                  # Root layout (tab navigation, theme)
-│   │   ├── index.tsx                    # Home screen
-│   │   ├── search.tsx                   # Search screen
-│   │   └── item/[id].tsx                # Item detail (future)
-│   │
-│   ├── components/
-│   │   ├── ItemCard.tsx                 # Single item in the list
-│   │   ├── FolderBadge.tsx              # Colored badge per folder
-│   │   ├── SearchBar.tsx                # Search input
-│   │   ├── EmptyState.tsx               # When list is empty
-│   │   └── LoadingState.tsx             # Loading spinner / skeleton
-│   │
+├── mobile/                              # Flutter app
 │   ├── lib/
-│   │   ├── api.ts                       # HTTP client (axios or fetch wrapper)
-│   │   ├── supabase.ts                  # Supabase client (used directly for reads, optional)
-│   │   └── constants.ts                 # Folder list, API base URL
+│   │   ├── main.dart                    # App entry point, router setup
+│   │   │
+│   │   ├── screens/
+│   │   │   ├── home_screen.dart         # Home screen (item list)
+│   │   │   ├── search_screen.dart       # Search screen
+│   │   │   ├── save_screen.dart         # "Saving..." screen shown after a share
+│   │   │   └── item_detail_screen.dart  # Item detail (future)
+│   │   │
+│   │   ├── widgets/
+│   │   │   ├── item_card.dart           # Single item in the list
+│   │   │   ├── folder_badge.dart        # Colored badge per folder
+│   │   │   ├── search_bar.dart          # Search input
+│   │   │   ├── empty_state.dart         # When list is empty
+│   │   │   └── loading_state.dart       # Loading spinner / skeleton
+│   │   │
+│   │   ├── services/
+│   │   │   ├── api_client.dart          # HTTP client wrapper for the backend
+│   │   │   ├── supabase_client.dart     # Supabase client (used directly for reads, optional)
+│   │   │   └── share_intent_service.dart # Listens for incoming shared URLs
+│   │   │
+│   │   └── models/
+│   │       └── item.dart                # Item, Folder, ApiResponse, etc. — mirrors backend/models/schemas.py
 │   │
-│   ├── hooks/
-│   │   ├── useItems.ts                  # Fetch & cache items
-│   │   ├── useSearch.ts                 # Search logic
-│   │   └── useShareIntent.ts            # Listen for incoming shared URLs
-│   │
-│   ├── types/
-│   │   └── index.ts                     # Item, Folder, ApiResponse, etc.
-│   │
+│   ├── android/                         # Native Android project (share intent filter lives in AndroidManifest.xml here)
 │   ├── assets/                          # Icons, splash screens
 │   │
-│   ├── app.json                         # Expo config (incl. share intent setup)
-│   ├── babel.config.js
-│   ├── tsconfig.json
-│   ├── package.json
-│   └── .env                             # EXPO_PUBLIC_API_URL, etc.
+│   ├── pubspec.yaml                     # Dependencies + app metadata (Flutter's package.json equivalent)
+│   └── analysis_options.yaml            # Dart lint rules
 │
 ├── backend/                             # FastAPI server
 │   ├── main.py                          # FastAPI app instance, CORS, routers
@@ -423,12 +415,11 @@ LOG_LEVEL=INFO
 YOUTUBE_API_KEY=...        # YouTube Data API v3
 ```
 
-**Mobile (`mobile/.env`):**
-```
-EXPO_PUBLIC_API_URL=https://stash-backend.up.railway.app
-EXPO_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=...
-```
+**Mobile:** Flutter has no built-in `.env`-at-runtime convention the way Expo's `EXPO_PUBLIC_*` variables work. Two standard approaches, pick one at task 0.7-equivalent and record the decision here:
+- `--dart-define=API_URL=... --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...` passed at build/run time, read via `String.fromEnvironment()`
+- A `flutter_dotenv` package reading a bundled (not committed) `.env` asset file
+
+Either way, the same three values travel with the mobile build: backend API URL, Supabase URL, Supabase anon/publishable key. Same security rule as before: anon/publishable key only, never the service key.
 
 ### 6.2 Security notes
 
@@ -449,17 +440,13 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 # Mobile (in a separate terminal)
 cd mobile
-npm install
-npx expo start
-# scan QR code with Expo Go app, OR
-# npx expo run:android (to build native build with share intent)
+flutter pub get
+flutter run
+# requires an Android device (USB debugging enabled) or emulator connected;
+# `flutter devices` lists what's available
 ```
 
-**Important:** Share intent only works in a **dev client build**, not in Expo Go. First time setup:
-```bash
-npx expo prebuild --platform android
-npx expo run:android
-```
+**Note:** Unlike Expo, there's no separate "dev client" concept — `flutter run` always builds and installs a real (debug-mode) native app on the connected device, so share intent works from the very first run once the Android manifest is configured. No prebuild step needed.
 
 ---
 
@@ -476,9 +463,9 @@ npx expo run:android
 
 ### 7.2 Mobile distribution
 
-- **Development:** EAS Build (Expo's build service, free tier) → APK file → install on builder's phone
-- **Self / friends:** Same APK, sideloaded via direct link or shared file
-- **Play Store:** Deferred. Requires $25 one-time fee + listing assets.
+- **Development:** `flutter run` installs a debug build directly to a USB-connected device
+- **Self / friends:** `flutter build apk --release` produces a standalone APK, sideloaded via direct file transfer (no build service needed — this is a local command, free, no account required)
+- **Play Store:** Deferred. Requires $25 one-time fee + listing assets, and a release build signed with a proper keystore (`flutter build appbundle`).
 
 ### 7.3 Database
 
@@ -543,7 +530,7 @@ Supabase is hosted by default. No deployment required. Schema changes managed vi
 
 - Concurrent users (single user, no contention)
 - Sub-second response times (5s is fine for a "save and forget" action)
-- Mobile bundle size (Expo handles reasonable defaults)
+- Mobile bundle size (Flutter's default release build settings are reasonable for a personal app)
 - Database query optimization beyond basic indexes
 
 ---
@@ -567,10 +554,10 @@ These are not in MVP, but the architecture should not block them.
 
 ### 10.3 iOS support
 
-- Same React Native codebase
-- Add iOS share extension config (separate from Android, more complex)
+- Same Flutter codebase
+- Add iOS share extension config (separate from Android, more complex — Flutter's `receive_sharing_intent`-style packages typically need a native iOS Share Extension target added in Xcode, not just a manifest entry like Android)
 - Pay $99/year Apple Developer fee
-- Build via EAS Build → distribute via TestFlight
+- Build via `flutter build ipa` → distribute via TestFlight
 
 ### 10.4 Screenshot / image support
 
@@ -592,13 +579,13 @@ For each major choice, why this over alternatives:
 
 | Decision | Chosen | Considered | Why |
 |----------|--------|------------|-----|
-| Mobile framework | React Native + Expo | Flutter, native Kotlin | JS/TS transferable, huge ecosystem, easier solo dev |
+| Mobile framework | Flutter | React Native + Expo (original MVP choice, switched 2026-07-18), native Kotlin | Deliberate specialization: builder chose to build depth in one mobile framework rather than stretch JS/TS across mobile and a future separate web-dev track. Also sidesteps a real, documented pain point hit with the original choice — Expo Go's app-store build lagging behind brand-new Expo SDK releases (see 3.1 for the full incident). Flutter release builds are self-contained binaries, not dependent on a separate "preview app" catching up to SDK version. |
 | Backend framework | FastAPI | Express (Node), Django | Python for AI ecosystem, lightweight, great DX |
 | Database | Supabase (PostgreSQL) | Firebase, MongoDB Atlas | Free tier, real SQL, pgvector for future, dashboard |
 | AI provider | Gemini 3 Flash | GPT-4o-mini, Claude Haiku, Gemini 3.1 Flash-Lite | Most generous free tier remaining (1,500 RPD), structured JSON support, multimodal-ready for future image features |
 | Article fetcher | Jina Reader | Custom scraper, Diffbot | Free, no maintenance, clean output |
 | Hosting | Railway | Render, Fly.io, Vercel | $5 credit lasts ~3–4 months for personal use; $5/month Hobby after; deploys from GitHub, supports long-running Python |
-| Language (mobile) | TypeScript | JavaScript | Type safety catches bugs early, mandatory at this scale |
+| Language (mobile) | Dart | — (Flutter has no realistic alternative language) | Dart is Flutter's native language; null safety and strong typing give the same "catch bugs early" benefit TypeScript would have on the web side |
 | Language (backend) | Python | Node, Go | AI library ecosystem, Pydantic for type safety |
 
 ---
@@ -613,9 +600,13 @@ For each major choice, why this over alternatives:
 
 **Endpoint** — A specific URL the backend exposes that does one thing. E.g., `POST /save` is an endpoint that saves an item.
 
-**Expo** — A framework on top of React Native that handles a lot of the painful native setup.
-
 **FastAPI** — A Python web framework for building APIs.
+
+**Flutter** — Google's UI toolkit for building natively-compiled mobile (and desktop/web) apps from a single Dart codebase. Renders its own widgets rather than wrapping native platform UI components.
+
+**Dart** — The programming language Flutter apps are written in. Statically typed, null-safe, compiled ahead-of-time for release builds.
+
+**Widget** — Flutter's fundamental building block. Everything on screen — text, layout, buttons, even padding — is a widget, composed into a tree.
 
 **RAG** — Retrieval-Augmented Generation. A pattern where you fetch relevant context first, then send it to an LLM. Used for "chat with your data" features.
 
