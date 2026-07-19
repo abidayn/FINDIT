@@ -101,13 +101,13 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 - [x] Install the Flutter SDK and Android SDK/toolchain (Android Studio, or standalone `cmdline-tools` + `adb`) if not already present
 - [x] Run `flutter doctor` and resolve any blockers before continuing (missing Android licenses, missing `adb`, etc.)
-- [ ] In the repo root, run `flutter create mobile` (creates the full Flutter project, including a real `android/` native folder — no separate "prebuild" step exists in Flutter)
-- [ ] Add `go_router` to `pubspec.yaml` (`flutter pub add go_router`), set up a minimal router in `lib/main.dart`
-- [ ] Replace the default counter-app `lib/main.dart` with a basic hello-world screen (`lib/screens/home_screen.dart`)
-- [ ] Add `supabase_flutter` and a share-intent package (verify current maintained choice on pub.dev — see `ARCHITECTURE.md` 3.1) via `flutter pub add`
+- [x] In the repo root, run `flutter create mobile` (creates the full Flutter project, including a real `android/` native folder — no separate "prebuild" step exists in Flutter)
+- [x] Add `go_router` to `pubspec.yaml` (`flutter pub add go_router`), set up a minimal router in `lib/main.dart`
+- [x] Replace the default counter-app `lib/main.dart` with a basic hello-world screen (`lib/screens/home_screen.dart`)
+- [x] Add `supabase_flutter` and a share-intent package (verify current maintained choice on pub.dev — see `ARCHITECTURE.md` 3.1) via `flutter pub add`
 - [ ] Decide and document the config-injection approach (`--dart-define` vs bundled non-committed asset file — see `ARCHITECTURE.md` 6.1) for the backend API URL and Supabase URL/anon key
-- [ ] Run `flutter run` with a USB-connected Android device (or emulator) — this installs a real debug build directly, no separate preview app needed
-- [ ] Confirm the hello-world screen renders on the device
+- [x] Run `flutter run` with a USB-connected Android device (or emulator) — this installs a real debug build directly, no separate preview app needed
+- [x] Confirm the hello-world screen renders on the device (verified on physical Infinix Note 30 Pro, 2026-07-19; had to bump `compileSdk` to 37 in `android/app/build.gradle.kts` because `receive_sharing_intent` requires it)
 
 ### 0.8 Connect mobile to backend (the round-trip)
 
