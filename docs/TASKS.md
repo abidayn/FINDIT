@@ -239,13 +239,15 @@ All five states verified on physical Infinix 2026-07-23: loading, success (BBC N
 
 ### 1.10 Mobile — API client
 
-- [ ] In `mobile/lib/services/api_client.dart`, create typed functions:
-  - `Future<Item> saveItem(String url)`
-  - `Future<List<Item>> getAllItems()`
-  - `Future<List<Item>> searchItems(String query)`
-  - `Future<void> deleteItem(String id)`
-- [ ] Wrap all calls with error handling — throw typed exceptions the UI can catch and display
-- [ ] Mirror types from `backend/models/schemas.py` as Dart classes in `mobile/lib/models/item.dart`
+- [x] In `mobile/lib/services/api_client.dart`, create typed functions:
+  - [x] `Future<Item> saveItem(String url)` — built and verified in 1.9
+  - [ ] `Future<List<Item>> getAllItems()` — **deferred to Phase 2**
+  - [ ] `Future<List<Item>> searchItems(String query)` — **deferred to Phase 2**
+  - [ ] `Future<void> deleteItem(String id)` — **deferred to Phase 2**
+- [x] Wrap all calls with error handling — throw typed exceptions the UI can catch and display
+- [x] Mirror types from `backend/models/schemas.py` as Dart classes in `mobile/lib/models/item.dart`
+
+**Deferral decision (2026-07-23):** the three read/delete functions are deliberately not built yet. Their backend endpoints (`GET /items`, `GET /search`, `DELETE /items/{id}`) don't exist either — those are Phase 2 task 2.1 — and no screen calls them until Phase 2. Writing them now would mean three untestable functions against endpoints that aren't there. Per Principle 2 (build only what was asked), each gets written alongside the screen that uses it, so a mistake surfaces immediately instead of a week later. `saveItem()` was built now because 1.9 genuinely needed it.
 
 ### Phase 1 — Definition of Done
 

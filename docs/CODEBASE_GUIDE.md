@@ -77,7 +77,7 @@ Two details worth understanding, because they're the kind of thing that comes up
 - `Folder = Literal["Self Growth", "Productivity", ...]` instead of `Folder = str`. This means Pydantic **rejects** any folder value outside the 9 allowed ones automatically — the validation lives in the type system, not in an `if` statement you'd have to remember to write.
 - `SaveRequest.url` is typed `HttpUrl`, not `str`. FastAPI uses this to reject malformed URLs with a 422 **before your code runs at all**.
 
-**Mirrors to:** `mobile/lib/models/item.dart` is supposed to mirror `Item` on the Dart side (per `ARCHITECTURE.md` §3.1). That file doesn't exist yet — it's part of Phase 1 task 1.10, not yet built.
+**Mirrors to:** `mobile/lib/models/item.dart` mirrors `Item` on the Dart side (see §3.7). Keep them in sync — the Dart class omits `raw_content` and `user_id` on purpose, but every other field must match.
 
 ### 2.4 `utils/url_parser.py` — pure functions, no network calls
 
@@ -197,11 +197,20 @@ Everything is wrapped in try/catch returning `null` on failure — needed becaus
 
 ### 3.4 `lib/services/api_client.dart` — the backend HTTP client
 
-One public function so far: `fetchHealth()`, which returns the `status` string from `GET {API_URL}/health`.
+Two public functions: `fetchHealth()` and `saveItem(url)`. Both **throw** on failure rather than returning null or a sentinel — that's deliberate, because `FutureBuilder`'s `snapshot.hasError` then handles all error display with no extra plumbing.
 
-It **throws** on every failure (missing `API_URL`, non-200, unexpected JSON shape) rather than returning null or a sentinel. That's deliberate: `FutureBuilder`'s `snapshot.hasError` then handles all error display with no extra plumbing. The 15-second timeout exists because Railway's free tier idle-sleeps — a cold start can take ~10s, and a shorter timeout would report a false failure.
+The two timeouts differ on purpose, and the reasoning is worth internalising:
 
-The `API_URL` null/empty guard has a useful side effect: in widget tests `dotenv.load()` never runs, so the guard throws *before* any network call is attempted — no hanging requests or pending-timer warnings at test teardown.
+| Function | Timeout | Why |
+|---|---|---|
+| `fetchHealth()` | 15s | Returns a fixed `{"status":"ok"}`. The only slow case is a Railway cold start. |
+| `saveItem()` | 45s | The backend chains a content fetch (up to 10s) with a Gemini call that may retry once, plus the DB write — on top of a possible cold start. |
+
+Giving `saveItem()` 15s would produce **false timeouts**: the request succeeds server-side while the phone gives up early. A timeout should reflect the slowest reasonable work, not a round number.
+
+`_baseUrl()` is the shared helper reading `API_URL` from dotenv. Its null/empty guard has a useful side effect: in widget tests `dotenv.load()` never runs, so it throws *before* any network call — no hanging requests or pending-timer warnings at test teardown.
+
+**Current-state gap:** `getAllItems()`, `searchItems()`, `deleteItem()` are listed in `TASKS.md` 1.10 but deliberately **not built** — their backend endpoints don't exist yet either (Phase 2 task 2.1). Each gets written alongside the screen that uses it.
 
 ### 3.5 `lib/screens/home_screen.dart`
 
@@ -211,11 +220,25 @@ The `Future` is stored in a `late final` field assigned in `initState()`, **not*
 
 Polished error/loading states are Phase 3 (§3.1–3.2) — this is deliberately minimal.
 
-### 3.6 `lib/screens/save_screen.dart` — placeholder
+### 3.6 `lib/screens/save_screen.dart` — where the core loop closes
 
-Currently just displays the received URL, proving the share pipeline end-to-end. Task 1.9 replaces the body with the real save flow (POST `/save`, loading/success/error states).
+Receives the shared URL, POSTs it to `/save`, and renders one of three states via `FutureBuilder`: `_Saving` (spinner + the URL), `_SaveFailed` (message + Retry), `_SaveSucceeded` (folder badge, title, summary, Done).
 
-### 3.7 `test/widget_test.dart` — the one test that exists
+Three details worth understanding:
+
+- **Retry works by assigning a *new* Future inside `setState`.** `FutureBuilder` re-runs only when the Future's *identity* changes — calling `setState(() {})` alone would rebuild the UI with the same stale result and fire no new request. Same reason the Future is created in `initState()` and not in `build()`: `build()` runs on every rebuild, so creating it there would fire a fresh HTTP request each time.
+- **"Done" calls `SystemNavigator.pop()`, not `Navigator.pop()`.** The first exits the app and returns the user to whatever they shared from; the second would just pop back to Fetch's home screen. For a share flow, saving a link is a side errand — the user wants to land back in TikTok.
+- **`ai_status == 'failed'` is surfaced, not hidden.** The backend always saves, falling back to `"Untitled saved item"` when the AI fails (Core Rule 5). Rendering that placeholder as though it were a real title would be lying to the user, so the screen says the AI details are unavailable instead.
+
+The folder badge is a small private widget here rather than `widgets/folder_badge.dart` — it's used in exactly one place so far. Phase 2 task 2.5 extracts it once the item list needs it too.
+
+### 3.7 `lib/models/item.dart` — mirrors the backend `Item`
+
+A plain Dart class with a `fromJson` factory, matching `backend/models/schemas.py`'s `Item`. Keep the two in sync when either changes.
+
+Two backend fields are deliberately **not** mirrored: `raw_content` (the full fetched article text — potentially huge, and no screen displays it) and `user_id` (always null until auth exists). `fromJson` ignores unmapped JSON keys, so omitting them costs nothing. A client model doesn't have to be a perfect mirror of the server — take what the UI needs.
+
+### 3.8 `test/widget_test.dart` — the one test that exists
 
 ```dart
 testWidgets('Home screen shows the app name', (tester) async {
@@ -226,7 +249,7 @@ testWidgets('Home screen shows the app name', (tester) async {
 
 A widget test: builds the widget tree in memory (no real device needed) and asserts the text "Fetch" appears once. It calls `FetchApp()` directly, never `main()` — so `dotenv.load()` never runs in tests, which is exactly why `api_client.dart` and `share_intent_service.dart` both need to fail gracefully when config/platform channels are absent. Run it with `flutter test`. Per `CLAUDE.md`, full test infra is explicitly post-MVP.
 
-### 3.5 `android/app/build.gradle.kts` — Android build config
+### 3.9 `android/app/build.gradle.kts` — Android build config
 
 The file we just edited together. Key lines:
 - `namespace`/`applicationId = "com.fetch.mobile"` — the app's unique Android package ID.
@@ -234,7 +257,7 @@ The file we just edited together. Key lines:
 - `minSdk`/`targetSdk = flutter.minSdkVersion/.targetSdkVersion` — still deferring to Flutter's defaults (unlike `compileSdk`, these didn't need overriding).
 - `signingConfig = signingConfigs.getByName("debug")` under `release` — release builds currently sign with the debug key, which is fine for personal use (`flutter run --release`) but **would need a real keystore before any Play Store submission** (`ARCHITECTURE.md` §7.2, explicitly deferred).
 
-### 3.6 `android/app/src/main/AndroidManifest.xml` — Android's permission/entry manifest
+### 3.10 `android/app/src/main/AndroidManifest.xml` — Android's permission/entry manifest
 
 Declares `MainActivity` as the launcher activity, sets `android:label="Fetch"` (the name shown in the launcher *and* the share sheet), and sets the launch theme.
 
@@ -254,7 +277,7 @@ An *intent filter* is how an Android app advertises a capability to the OS. This
 
 The separate `<queries>` block for `android.intent.action.PROCESS_TEXT` is unrelated — a Flutter default so the engine's text-selection plugin can query other apps.
 
-### 3.7 Files not worth deep-diving, but here's why they exist
+### 3.11 Files not worth deep-diving, but here's why they exist
 
 | File | Why it's there |
 |---|---|
@@ -304,10 +327,13 @@ Cross-referencing `TASKS.md`'s checkboxes with what's on disk:
 - **Task 1.8 complete:** share intent integration — Fetch is registered as a system share target, and both cold-start and warm-start shares deliver the URL to `SaveScreen` (verified on device 2026-07-23)
 - Project renamed Stash → Fetch, including Android `applicationId` → `com.fetch.mobile` (2026-07-23)
 
+- **Task 1.9 complete:** real save screen — share → POST `/save` → AI processes → row in Supabase → result on screen. All five states (loading, success, error, retry, done) verified on device 2026-07-23. This is the core value loop working end to end.
+- **Task 1.10 partially complete:** `models/item.dart` and `saveItem()` built. The three read/delete functions are deliberately deferred to Phase 2 (see the deferral note in `TASKS.md` 1.10).
+
 **Not started yet (in order of what's next):**
-- 1.9: real save screen — POST `/save` with loading/success/error states, replacing the current placeholder
-- 1.10: full API client (`saveItem`, `getAllItems`, `searchItems`, `deleteItem`) + `models/item.dart` mirroring the backend's `Item`
+- Phase 1 Definition of Done still has unverified items: save latency hasn't been measured, a TikTok/IG URL hasn't been saved *from the phone* (only via the backend directly in 1.7), sharing hasn't been tested from a real source app's share sheet (only simulated via `adb am start`), and the "10+ real items" bar isn't met yet.
+- Phase 2 task 2.1: `GET /items`, `GET /search`, `DELETE /items/{id}` on the backend — the DB functions already exist (§2.8), they just need routes.
 
 **Notably not yet built despite being "done" in the backend:** `routes/items.py`, `routes/search.py` — the DB functions exist (§2.8) but nothing calls them. That's correctly scoped for Phase 2, not a bug.
 
-The next step per `TASKS.md`'s ordering: **1.9, the real save screen** — wiring `SaveScreen` to the `/save` endpoint that's already built and tested on the backend. That closes the core value loop end-to-end: share a link → AI processes it → row lands in Supabase.
+The next step: **close out Phase 1's Definition of Done by actually using the app** — share from a real TikTok/Chrome share sheet rather than `adb`, confirm graceful degradation on a TikTok URL, and build up 10+ saved items. That's dogfooding, not coding, and it's where real bugs surface. Then Phase 2 task 2.1 (the read endpoints) begins.
