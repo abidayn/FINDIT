@@ -284,88 +284,94 @@ All five states verified on physical Infinix 2026-07-23: loading, success (BBC N
 - [x] `GET /items/{id}` returns single item (404 when missing) — needed a new `database.get_item_by_id()`, which didn't exist
 - [x] `DELETE /items/{id}` removes an item (204 on success, 404 when missing)
 - [x] Create `backend/routes/search.py`
-- [x] `GET /search?q=morning+routine` — **still ILIKE, not full-text yet**; the GIN index swap is task 2.2. Empty query returns all, queries under 2 chars return nothing
+- [x] `GET /search?q=morning+routine` — upgraded to full-text in task 2.2 (see below). Empty query returns all, queries under 2 chars return nothing
 - [x] All endpoints wired into `main.py`
 
 Verified against the live database 2026-07-23 (17 real items): folder filter returned the 3 Finance items, an invalid folder gave 422, search "BBC" gave 3 hits, a 1-character query gave 0, an empty query gave all 17, GET by bad id gave 404, and DELETE returned 204 then 404 on re-fetch.
 
 ### 2.2 Backend — Search implementation
 
-- [ ] In `database.py`, use the GIN full-text index from schema
-- [ ] Query: `SELECT * FROM items WHERE to_tsvector('english', title || ' ' || summary) @@ plainto_tsquery('english', $1) ORDER BY ts_rank(...) DESC LIMIT 50`
-- [ ] If query is empty string, return all items
-- [ ] If query has fewer than 2 characters, return empty list (avoid noisy results)
+- [x] In `database.py`, use the GIN full-text index from schema — via PostgREST's `plfts` operator (`plainto_tsquery`), which hits the existing `idx_items_search` GIN index. No DB migration needed; the index was already in the schema.
+- [x] Query — implemented as `plfts` OR `ilike` on both title and summary, not raw SQL. Full-text alone can't do partial words ("BB" → "BBC"); ILIKE alone can't stem ("story" → "stories"). The OR gives the union. **Deviation from the spec line:** no `ts_rank` ordering — that needs raw SQL the Supabase client can't send without a DB function, so results stay newest-first, which is more useful on a personal library anyway. `LIMIT 50` kept.
+- [x] If query is empty string, return all items (handled in `routes/search.py`)
+- [x] If query has fewer than 2 characters, return empty list (handled in `routes/search.py`)
+
+Verified on Railway production 2026-07-24: "story" matched "stories" (2 rows — proves stemming, which plain ILIKE could never do), "BB" matched "BBC" (2 rows — proves substring still works), "global stories" (multi-word) worked, and `"tik'tok--;DROP"` returned 0 rows rather than erroring (query is stripped to alphanumerics + spaces before hitting PostgREST).
 
 ### 2.3 Mobile — Item model and data services
 
-- [ ] In `mobile/lib/models/item.dart`, mirror the `Item` shape from backend (a plain Dart class with a `fromJson` factory)
-- [ ] Define `Folder` as a Dart `enum` with the 9 allowed values
-- [ ] In `api_client.dart` (or a small `items_repository.dart`), expose functions to fetch all items and search — plain `Future`-returning functions are enough; no hooks equivalent needed for an app this size
-- [ ] For search debouncing (300ms), use a `Timer` that gets cancelled/reset on each keystroke in the search screen's state
-- [ ] Create `mobile/lib/constants.dart` exporting the folder list and per-folder colors
+- [x] In `mobile/lib/models/item.dart`, mirror the `Item` shape from backend (a plain Dart class with a `fromJson` factory)
+- [x] Define `Folder` as a Dart `enum` with the 9 allowed values
+- [x] In `api_client.dart` (or a small `items_repository.dart`), expose functions to fetch all items and search — plain `Future`-returning functions are enough; no hooks equivalent needed for an app this size
+- [x] For search debouncing (300ms), use a `Timer` that gets cancelled/reset on each keystroke in the search screen's state
+- [x] Create `mobile/lib/constants.dart` exporting the folder list and per-folder colors
 
 ### 2.4 Mobile — ItemCard widget
 
-- [ ] Create `mobile/lib/widgets/item_card.dart`
-- [ ] Constructor params: `item` (Item), `onTap` (VoidCallback)
-- [ ] Layout: thumbnail (or platform icon as fallback) on left, title + summary on right, folder badge at top-right
-- [ ] Wrap in `InkWell`/`GestureDetector` to trigger `onTap`
-- [ ] Long-press shows a delete option (post-MVP polish, skip for now)
-- [ ] Use platform-appropriate icons for source (YouTube logo, TikTok logo, link icon for articles)
+- [x] Create `mobile/lib/widgets/item_card.dart`
+- [x] Constructor params: `item` (Item), `onTap` (VoidCallback)
+- [x] Layout: thumbnail (or platform icon as fallback) on left, title + summary on right, folder badge at top-right
+- [x] Wrap in `InkWell`/`GestureDetector` to trigger `onTap`
+- [x] Long-press shows a delete option (post-MVP polish, skip for now)
+- [x] Use platform-appropriate icons for source (YouTube logo, TikTok logo, link icon for articles)
 
 ### 2.5 Mobile — FolderBadge widget
 
-- [ ] Create `mobile/lib/widgets/folder_badge.dart`
-- [ ] Constructor param: `folder` (Folder)
-- [ ] Renders a small colored pill with the folder name
-- [ ] Colors mapped from `constants.dart`
+- [x] Create `mobile/lib/widgets/folder_badge.dart`
+- [x] Constructor param: `folder` (Folder)
+- [x] Renders a small colored pill with the folder name
+- [x] Colors mapped from `constants.dart`
 
 ### 2.6 Mobile — Home screen
 
-- [ ] Update `lib/screens/home_screen.dart` to be the home screen
-- [ ] Fetch all items on load (`FutureBuilder` or a simple `StatefulWidget` + `setState` after an async call)
-- [ ] Show loading skeleton (or spinner) while loading
-- [ ] Show empty state if no items: "Nothing saved yet. Share a link to get started."
-- [ ] `ListView.builder` of `ItemCard`s (lazy by default — no extra config needed for basic performance)
-- [ ] Tap card → open original URL in browser (`url_launcher` package's `launchUrl`)
-- [ ] Header has a search icon → navigates to search screen via `go_router`
-- [ ] Wrap the list in a `RefreshIndicator` for pull-to-refresh
+- [x] Update `lib/screens/home_screen.dart` to be the home screen
+- [x] Fetch all items on load (`FutureBuilder` or a simple `StatefulWidget` + `setState` after an async call)
+- [x] Show loading skeleton (or spinner) while loading
+- [x] Show empty state if no items: "Nothing saved yet. Share a link to get started."
+- [x] `ListView.builder` of `ItemCard`s (lazy by default — no extra config needed for basic performance)
+- [x] Tap card → open original URL in browser (`url_launcher` package's `launchUrl`)
+- [x] Header has a search icon → navigates to search screen via `go_router`
+- [x] Wrap the list in a `RefreshIndicator` for pull-to-refresh
 
 ### 2.7 Mobile — Folder filter
 
-- [ ] Add a horizontal scrollable row of folder chips above the list (`ListView` with `scrollDirection: Axis.horizontal`, or Flutter's `ChoiceChip` widgets)
-- [ ] "All" chip is default selected
-- [ ] Tapping a folder chip filters the list to that folder
-- [ ] Show count next to each folder (e.g., "Self Growth (12)")
-- [ ] State management: local Flutter state (`setState`) is enough — no external state management package needed yet
+- [x] Add a horizontal scrollable row of folder chips above the list (`ListView` with `scrollDirection: Axis.horizontal`, or Flutter's `ChoiceChip` widgets)
+- [x] "All" chip is default selected
+- [x] Tapping a folder chip filters the list to that folder
+- [x] Show count next to each folder (e.g., "Self Growth (12)")
+- [x] State management: local Flutter state (`setState`) is enough — no external state management package needed yet
 
 ### 2.8 Mobile — Search screen
 
-- [ ] Create `lib/screens/search_screen.dart`, registered as a `go_router` route
-- [ ] Search input at top (`TextField`, e.g. inside the `AppBar`)
-- [ ] Below: results list from the debounced search call in 2.3
-- [ ] Empty state when no query: "Type to search your saves"
-- [ ] Empty state when no results: "No matches for 'XYZ'"
-- [ ] Same `ItemCard` widget for results
-- [ ] Tap result → open original URL
+- [x] Create `lib/screens/search_screen.dart`, registered as a `go_router` route
+- [x] Search input at top (`TextField`, e.g. inside the `AppBar`)
+- [x] Below: results list from the debounced search call in 2.3
+- [x] Empty state when no query: "Type to search your saves"
+- [x] Empty state when no results: "No matches for 'XYZ'"
+- [x] Same `ItemCard` widget for results
+- [x] Tap result → open original URL
 
 ### 2.9 Manual testing
 
-- [ ] Save 20+ items across different folders
-- [ ] Verify all show on home screen
-- [ ] Filter by each folder, confirm correct items appear
-- [ ] Search for keywords from titles, confirm results
-- [ ] Test pull-to-refresh
-- [ ] Test tapping items opens original URLs in correct app (TikTok URL opens TikTok app, YouTube opens YouTube)
+**Status: NOT done on-device.** The phone was disconnected (builder away) when the mobile UI was finished, so none of the on-device checks below have run. What *was* verified instead: the debug APK builds cleanly (`flutter build apk --debug` succeeded — the Dart fully compiles), `flutter analyze` is clean, and every backend endpoint works against the live database and Railway production. **The UI has not been seen running.** Re-connect the phone and run this list before treating Phase 2 as truly complete.
+
+- [ ] Save 20+ items across different folders — 17 exist; needs a few more, saved *from the phone*
+- [ ] Verify all show on home screen — **unverified on device**
+- [ ] Filter by each folder, confirm correct items appear — **unverified on device** (in-memory filter logic is simple; the backend folder filter was separately confirmed)
+- [ ] Search for keywords from titles, confirm results — backend search verified; **the search screen UI is unverified**
+- [ ] Test pull-to-refresh — **unverified on device**
+- [ ] Test tapping items opens original URLs in correct app — **unverified, and highest-risk:** `LaunchMode.externalApplication` can only be confirmed on a real device
 
 ### Phase 2 — Definition of Done
 
-✅ Home screen lists all saved items with title, summary, folder badge
-✅ Folder filter chips work
-✅ Search returns relevant results in under 500ms
-✅ Tapping any item opens the original URL
-✅ Empty states are handled (no items, no search results)
-✅ App is usable end-to-end for personal use, even if not pretty
+**Code complete, on-device verification pending.** Every criterion below is *implemented* and the backend half of each is *verified*, but the mobile UI has not been run on a device yet (builder away, phone disconnected). Treat these as ⏳ not ✅ until the 2.9 checklist is run.
+
+⏳ Home screen lists all saved items with title, summary, folder badge — built; not seen running
+⏳ Folder filter chips work — built; in-memory filter, not seen running
+⏳ Search returns relevant results in under 500ms — backend verified fast on production; UI + latency not measured on device
+⏳ Tapping any item opens the original URL — built; `externalApplication` launch unverified on device
+⏳ Empty states are handled (no items, no search results) — built (`_Message`, "No matches for…"); not seen running
+⏳ App is usable end-to-end for personal use, even if not pretty — pending the above
 
 ### Phase 2 — Common Pitfalls
 

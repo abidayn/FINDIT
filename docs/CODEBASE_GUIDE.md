@@ -327,12 +327,14 @@ Cross-referencing `TASKS.md`'s checkboxes with what's on disk:
 - **Task 1.8 complete:** share intent integration — Fetch is registered as a system share target, and both cold-start and warm-start shares deliver the URL to `SaveScreen` (verified on device 2026-07-23)
 - Project renamed Stash → Fetch, including Android `applicationId` → `com.fetch.mobile` (2026-07-23)
 
-- **Task 1.9 complete:** real save screen — share → POST `/save` → AI processes → row in Supabase → result on screen. All five states (loading, success, error, retry, done) verified on device 2026-07-23. This is the core value loop working end to end.
-- **Task 1.10 partially complete:** `models/item.dart` and `saveItem()` built. The three read/delete functions are deliberately deferred to Phase 2 (see the deferral note in `TASKS.md` 1.10).
+- **Task 1.9 complete:** real save screen — share → POST `/save` → AI processes → row in Supabase → result on screen. All five states verified on device 2026-07-23.
+- **Phase 2 backend complete (2.1, 2.2):** `GET /items` (+ folder filter), `GET /items/{id}`, `DELETE /items/{id}`, `GET /search`. Search upgraded from ILIKE to full-text (`plfts`) OR-ed with ILIKE — stems *and* does partials. All verified against the live DB and Railway production.
+- **Phase 2 mobile built but NOT verified on device (2.3–2.8):** `Folder` enum, `constants.dart`, `FolderBadge`, `ItemCard`, a real home screen (list + pull-to-refresh + folder chips + empty state), and a debounced search screen. The debug APK compiles and `flutter analyze` is clean, but the UI has not been run — the phone was disconnected. Task 2.9 (on-device testing) is the outstanding gap.
 
 **Not started yet (in order of what's next):**
-- Phase 1 Definition of Done still has unverified items: save latency hasn't been measured, a TikTok/IG URL hasn't been saved *from the phone* (only via the backend directly in 1.7), sharing hasn't been tested from a real source app's share sheet (only simulated via `adb am start`), and the "10+ real items" bar isn't met yet.
-- Phase 2 task 2.1: `GET /items`, `GET /search`, `DELETE /items/{id}` on the backend — the DB functions already exist (§2.8), they just need routes.
+- **Task 2.9:** run the mobile UI on the phone. Highest-risk unverified item is tap-to-open (`LaunchMode.externalApplication`). Until this is done, Phase 2's Definition of Done is code-complete but not confirmed.
+- Phase 1 Definition of Done also still has unverified items: save latency never measured, sharing only ever simulated via `adb am start` rather than a real share sheet.
+- Phase 3 (polish) is next after 2.9 passes.
 
 **Notably not yet built despite being "done" in the backend:** `routes/items.py`, `routes/search.py` — the DB functions exist (§2.8) but nothing calls them. That's correctly scoped for Phase 2, not a bug.
 
