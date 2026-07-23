@@ -227,13 +227,15 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 1.9 Mobile — Save screen
 
-- [ ] Create `lib/screens/save_screen.dart`, registered as a `go_router` route
-- [ ] Receives URL via route parameter (from share intent, or a manual "paste URL" entry point)
-- [ ] Shows "Saving..." state with the URL displayed
-- [ ] Calls backend `POST /save` via `api_client.dart`
-- [ ] On success: shows the result (title, summary, folder badge) and "Done" button
-- [ ] On failure: shows error message and "Retry" button
-- [ ] After save, allow user to return to source app (or close)
+- [x] Create `lib/screens/save_screen.dart`, registered as a `go_router` route
+- [x] Receives URL via route parameter — passed as `state.extra` rather than a path param, so a URL inside a URL needs no escaping
+- [x] Shows "Saving..." state with the URL displayed
+- [x] Calls backend `POST /save` via `api_client.dart` (`saveItem()`, 45s timeout to cover fetch + AI retry + Railway cold start)
+- [x] On success: shows the result (title, summary, folder badge) and "Done" button
+- [x] On failure: shows error message and "Retry" button
+- [x] After save, allow user to return to source app (or close) — "Done" calls `SystemNavigator.pop()`, which exits the app rather than just popping the route
+
+All five states verified on physical Infinix 2026-07-23: loading, success (BBC News article → AI returned real title/summary/folder), error (invalid URL → HTTP 422), retry (returns to loading), and Done (activity exits to launcher). Also created `lib/models/item.dart` here — listed under 1.10, but 1.9 can't render title/summary/folder without it.
 
 ### 1.10 Mobile — API client
 
