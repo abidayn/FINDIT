@@ -33,12 +33,12 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 0.1 Repository setup
 
-- [ ] Create new GitHub repo named `fetch` (or final project name)
-- [ ] Add `.gitignore` covering Python (`__pycache__`, `.env`, `venv/`) and Flutter/Dart (`.dart_tool/`, `build/`, `android/local.properties`, `*.iml`)
-- [ ] Add empty `README.md` with project name and one-line description
-- [ ] Create root folder structure: `mobile/`, `backend/`, `docs/`
-- [ ] Move `PRD.md`, `ARCHITECTURE.md`, `AI_FEATURE_SPEC.md`, and this file into `docs/`
-- [ ] First commit, push to main
+- [x] Create new GitHub repo named `fetch` (or final project name) — actually named `FINDIT` (github.com/abidayn/FINDIT); the repo name was never changed to match the app name
+- [x] Add `.gitignore` covering Python (`__pycache__`, `.env`, `venv/`) and Flutter/Dart (`.dart_tool/`, `build/`, `android/local.properties`, `*.iml`)
+- [x] Add empty `README.md` with project name and one-line description
+- [x] Create root folder structure: `mobile/`, `backend/`, `docs/`
+- [x] Move `PRD.md`, `ARCHITECTURE.md`, `AI_FEATURE_SPEC.md`, and this file into `docs/`
+- [x] First commit, push to main
 
 ### 0.2 Supabase project setup
 
@@ -51,15 +51,15 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 0.3 Google AI Studio (Gemini) setup
 
-- [ ] Go to aistudio.google.com, sign in
-- [ ] Create new API key, save securely
-- [ ] Test the key with a curl command to confirm it works:
+- [x] Go to aistudio.google.com, sign in
+- [x] Create new API key, save securely
+- [x] Test the key with a curl command to confirm it works — since verified far more thoroughly than a curl: the live `/save` pipeline returns real AI-generated titles and summaries with `ai_status: "ok"`:
   ```bash
   curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent?key=YOUR_KEY" \
     -H 'Content-Type: application/json' \
     -d '{"contents":[{"parts":[{"text":"Say hi in 3 words"}]}]}'
   ```
-- [ ] Verify your free tier limits in AI Studio dashboard (should show ~1,500 RPD for Gemini 3 Flash)
+- [ ] Verify your free tier limits in AI Studio dashboard (should show ~1,500 RPD for Gemini 3 Flash) — **still open:** only you can check this in the dashboard. Worth doing before heavy dogfooding, so you know how many saves per day you have before hitting the cap
 
 ### 0.4 Google Cloud / YouTube Data API setup
 
@@ -85,7 +85,7 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 - [x] Create `.env.example` with the same keys but empty values (commit this one)
 - [x] Run locally: `uvicorn main:app --reload --host 0.0.0.0 --port 8000`
 - [x] Visit `http://localhost:8000/health` in browser, confirm response
-- [ ] Visit `http://localhost:8000/docs` to see auto-generated Swagger UI
+- [x] Visit `http://localhost:8000/docs` to see auto-generated Swagger UI — also live in production: `https://findit-production-7ab0.up.railway.app/docs` returns 200
 
 ### 0.6 Backend deployment (Railway)
 
