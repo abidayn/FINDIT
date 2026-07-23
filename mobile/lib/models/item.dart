@@ -1,3 +1,5 @@
+import 'folder.dart';
+
 /// Mirrors `Item` in backend/models/schemas.py — one row of the `items` table
 /// and the response body of POST /save. Keep the two in sync when either changes.
 ///
@@ -10,7 +12,7 @@ class Item {
   final String url;
   final String title;
   final String? summary;
-  final String folder;
+  final Folder folder;
   final String? source;
   final String? thumbnailUrl;
   final DateTime createdAt;
@@ -40,7 +42,7 @@ class Item {
       url: json['url'] as String,
       title: json['title'] as String,
       summary: json['summary'] as String?,
-      folder: json['folder'] as String,
+      folder: Folder.fromLabel(json['folder'] as String),
       source: json['source'] as String?,
       thumbnailUrl: json['thumbnail_url'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),

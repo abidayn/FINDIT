@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/save_screen.dart';
+import 'screens/search_screen.dart';
 import 'services/share_intent_service.dart';
 
 Future<void> main() async {
@@ -19,6 +20,7 @@ final _router = GoRouter(
       path: '/save',
       builder: (context, state) => SaveScreen(url: state.extra as String),
     ),
+    GoRoute(path: '/search', builder: (context, state) => const SearchScreen()),
   ],
 );
 

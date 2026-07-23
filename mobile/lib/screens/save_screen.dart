@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../models/item.dart';
 import '../services/api_client.dart';
+import '../widgets/folder_badge.dart';
 
 /// Shown when a URL arrives from the share sheet. Sends it to the backend and
 /// reports what came back. Deliberately plain — visual polish is Phase 3.
@@ -115,7 +116,7 @@ class _SaveSucceeded extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _FolderBadge(folder: item.folder),
+        FolderBadge(folder: item.folder),
         const SizedBox(height: 16),
         Text(item.title, style: Theme.of(context).textTheme.titleLarge),
         if (item.summary != null) ...[
@@ -142,28 +143,6 @@ class _SaveSucceeded extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _FolderBadge extends StatelessWidget {
-  final String folder;
-
-  const _FolderBadge({required this.folder});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: scheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        folder,
-        style: TextStyle(color: scheme.onSecondaryContainer),
-      ),
     );
   }
 }

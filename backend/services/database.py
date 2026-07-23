@@ -64,19 +64,42 @@ def get_items_by_folder(folder: str) -> list[Item]:
 
 
 def search_items(query: str) -> list[Item]:
-    """Keyword search over title and summary.
+    """Keyword search over title and summary (TASKS.md 2.2).
 
-    ILIKE is case-insensitive substring matching — crude, but it needs no
-    ranking logic and behaves predictably on a small personal library. The GIN
-    full-text index in the schema is for Phase 2, when we swap this for
-    proper ranked search (TASKS.md 2.2).
+    Runs full-text search and substring matching together, because neither
+    alone is good enough on its own:
+
+    - `plfts` is PostgreSQL full-text via `plainto_tsquery`. It understands
+      word stems, so "story" finds "stories" — ILIKE never would. `plfts`
+      rather than `fts` because plainto_tsquery accepts free-form text; the
+      plain `fts` operator expects tsquery syntax and errors on ordinary
+      phrases.
+    - ILIKE still earns its place for partial words: someone typing "BB"
+      expects to see "BBC News", and full-text only matches whole terms.
+
+    OR-ing all four conditions gives the union, so a query is found whichever
+    way it was meant. Results stay newest-first rather than ranked by
+    relevance: `ts_rank` needs raw SQL, which the Supabase client can't send
+    without a database function, and on a personal library of this size
+    recency is the more useful order anyway.
     """
-    pattern = f"%{query}%"
+    # PostgREST parses this filter as comma-separated conditions, and tsquery
+    # has its own operator characters — so anything outside letters, digits and
+    # spaces is dropped rather than escaped. Simpler, and no query the user
+    # would realistically type is meaningfully worse for it.
+    safe = "".join(c for c in query if c.isalnum() or c.isspace()).strip()
+    if not safe:
+        return []
+
     response = (
         _client.table(_TABLE)
         .select("*")
-        .or_(f"title.ilike.{pattern},summary.ilike.{pattern}")
+        .or_(
+            f"title.plfts.{safe},summary.plfts.{safe},"
+            f"title.ilike.%{safe}%,summary.ilike.%{safe}%"
+        )
         .order("created_at", desc=True)
+        .limit(50)
         .execute()
     )
     return [Item(**row) for row in response.data]

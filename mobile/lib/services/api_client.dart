@@ -37,6 +37,40 @@ Future<String> fetchHealth() async {
   return status;
 }
 
+/// Every saved item, newest first.
+Future<List<Item>> getAllItems() async {
+  final response = await http
+      .get(Uri.parse('${_baseUrl()}/items'))
+      .timeout(const Duration(seconds: 20));
+
+  if (response.statusCode != 200) {
+    throw Exception('Failed to load items: HTTP ${response.statusCode}');
+  }
+
+  final rows = jsonDecode(response.body) as List<dynamic>;
+  return rows
+      .map((row) => Item.fromJson(row as Map<String, dynamic>))
+      .toList();
+}
+
+/// Keyword search over title and summary. The backend returns everything for
+/// an empty query and nothing for a query under 2 characters.
+Future<List<Item>> searchItems(String query) async {
+  final uri = Uri.parse('${_baseUrl()}/search')
+      .replace(queryParameters: {'q': query});
+
+  final response = await http.get(uri).timeout(const Duration(seconds: 20));
+
+  if (response.statusCode != 200) {
+    throw Exception('Search failed: HTTP ${response.statusCode}');
+  }
+
+  final rows = jsonDecode(response.body) as List<dynamic>;
+  return rows
+      .map((row) => Item.fromJson(row as Map<String, dynamic>))
+      .toList();
+}
+
 /// Sends [url] to the backend's POST /save, which fetches the content, runs it
 /// through the AI, and stores the row — returning the saved [Item].
 ///
