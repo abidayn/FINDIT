@@ -1,6 +1,6 @@
 # Tasks Breakdown
 
-**Project:** Stash (working name)
+**Project:** Fetch (working name)
 **Author:** Biday
 **Last updated:** June 26, 2026
 **Status:** Active build plan
@@ -33,7 +33,7 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 0.1 Repository setup
 
-- [ ] Create new GitHub repo named `stash` (or final project name)
+- [ ] Create new GitHub repo named `fetch` (or final project name)
 - [ ] Add `.gitignore` covering Python (`__pycache__`, `.env`, `venv/`) and Flutter/Dart (`.dart_tool/`, `build/`, `android/local.properties`, `*.iml`)
 - [ ] Add empty `README.md` with project name and one-line description
 - [ ] Create root folder structure: `mobile/`, `backend/`, `docs/`
@@ -43,7 +43,7 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 ### 0.2 Supabase project setup
 
 - [x] Create account at supabase.com (free)
-- [x] Create new project named `stash` (region: closest to Indonesia — Singapore)
+- [x] Create new project named `stash` (region: closest to Indonesia — Singapore) — note: kept the original `stash` name in the Supabase dashboard even after the app was renamed to Fetch (2026-07-23); renaming the project there isn't worth the churn
 - [x] Save the **Project URL** and **anon key** and **service key** somewhere secure
 - [x] Open the SQL Editor and run the schema from `ARCHITECTURE.md` Section 3.3 to create the `items` table and indexes
 - [x] Manually insert one test row via the dashboard to confirm the table works
@@ -63,7 +63,7 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 0.4 Google Cloud / YouTube Data API setup
 
-- [x] Go to console.cloud.google.com, create a new project named `stash`
+- [x] Go to console.cloud.google.com, create a new project named `stash` (same note as 0.2 — still named `stash` in the GCP console after the rename to Fetch)
 - [x] Enable "YouTube Data API v3" for the project
 - [x] Create an API key (Credentials → Create credentials → API key)
 - [x] Restrict the key to YouTube Data API v3 only (for safety)
@@ -105,16 +105,16 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 - [x] Add `go_router` to `pubspec.yaml` (`flutter pub add go_router`), set up a minimal router in `lib/main.dart`
 - [x] Replace the default counter-app `lib/main.dart` with a basic hello-world screen (`lib/screens/home_screen.dart`)
 - [x] Add `supabase_flutter` and a share-intent package (verify current maintained choice on pub.dev — see `ARCHITECTURE.md` 3.1) via `flutter pub add`
-- [ ] Decide and document the config-injection approach (`--dart-define` vs bundled non-committed asset file — see `ARCHITECTURE.md` 6.1) for the backend API URL and Supabase URL/anon key
+- [x] Decide and document the config-injection approach (`--dart-define` vs bundled non-committed asset file — see `ARCHITECTURE.md` 6.1) for the backend API URL and Supabase URL/anon key — chose `flutter_dotenv`, mirrors backend's `.env`/`.env.example` pattern
 - [x] Run `flutter run` with a USB-connected Android device (or emulator) — this installs a real debug build directly, no separate preview app needed
 - [x] Confirm the hello-world screen renders on the device (verified on physical Infinix Note 30 Pro, 2026-07-19; had to bump `compileSdk` to 37 in `android/app/build.gradle.kts` because `receive_sharing_intent` requires it)
 
 ### 0.8 Connect mobile to backend (the round-trip)
 
-- [ ] In `mobile/lib/services/api_client.dart`, create a function `fetchHealth()` that calls `{API_URL}/health`
-- [ ] In the home screen, call it on load (e.g., in `initState` or a `FutureBuilder`) and display the response
-- [ ] Confirm on device: app loads → calls Railway backend → shows "status: ok"
-- [ ] This is the moment your two systems are talking. Celebrate small.
+- [x] In `mobile/lib/services/api_client.dart`, create a function `fetchHealth()` that calls `{API_URL}/health`
+- [x] In the home screen, call it on load (e.g., in `initState` or a `FutureBuilder`) and display the response
+- [x] Confirm on device: app loads → calls Railway backend → shows "status: ok" (verified on physical Infinix, 2026-07-19 — screen showed "Backend status: ok")
+- [x] This is the moment your two systems are talking. Celebrate small.
 
 ### Phase 0 — Definition of Done
 
@@ -219,11 +219,11 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
 
 ### 1.8 Mobile — Share intent integration
 
-- [ ] Add the chosen share-intent package (see `ARCHITECTURE.md` 3.1) to `pubspec.yaml`
-- [ ] In `android/app/src/main/AndroidManifest.xml`, add an intent filter for `ACTION_SEND` with MIME type `text/plain` so the app appears in the Android share sheet
-- [ ] In `lib/services/share_intent_service.dart`, listen for incoming shared text/URLs per the package's API (typically a stream you subscribe to at app start)
-- [ ] On receiving a shared URL, navigate (via `go_router`) to the save screen with the URL as a parameter
-- [ ] Test: open TikTok → share a video → "Share to" → see Stash in the list → tap it → app opens with the URL
+- [x] Add the chosen share-intent package (see `ARCHITECTURE.md` 3.1) to `pubspec.yaml` — `receive_sharing_intent` ^1.9.0
+- [x] In `android/app/src/main/AndroidManifest.xml`, add an intent filter for `ACTION_SEND` with MIME type `text/plain` so the app appears in the Android share sheet
+- [x] In `lib/services/share_intent_service.dart`, listen for incoming shared text/URLs per the package's API (typically a stream you subscribe to at app start)
+- [x] On receiving a shared URL, navigate (via `go_router`) to the save screen with the URL as a parameter
+- [x] Test: open TikTok → share a video → "Share to" → see Fetch in the list → tap it → app opens with the URL (verified on physical Infinix 2026-07-23 via `adb am start -a android.intent.action.SEND`; both cold start and warm start deliver the URL to `SaveScreen`. Also confirmed registered as a system share target via `adb shell cmd package query-activities`)
 
 ### 1.9 Mobile — Save screen
 
@@ -453,12 +453,12 @@ This is where the product becomes real.
 
 - [ ] Install the latest build on your daily-driver phone
 - [ ] Use it for every link/video you would normally save
-- [ ] Don't use the native TikTok/IG/YouTube "save" features as a parallel system — force yourself to use Stash
+- [ ] Don't use the native TikTok/IG/YouTube "save" features as a parallel system — force yourself to use Fetch
 - [ ] Goal: 50+ items saved by end of week 2
 
 ### 4.2 Feedback collection
 
-- [ ] Keep a running note (in Stash itself or in your phone) of friction points
+- [ ] Keep a running note (in Fetch itself or in your phone) of friction points
 - [ ] Categorize each as: bug, missing feature, AI mistake, UX issue
 - [ ] Note specific examples (e.g., "AI keeps putting fitness videos in Self Growth")
 

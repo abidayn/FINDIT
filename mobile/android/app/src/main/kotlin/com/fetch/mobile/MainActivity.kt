@@ -1,4 +1,4 @@
-package com.stash.mobile
+package com.fetch.mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

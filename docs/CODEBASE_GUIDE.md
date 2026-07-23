@@ -45,7 +45,7 @@ Reads every secret (`GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `Y
 ### 2.2 `main.py` — the entry point, 22 lines on purpose
 
 ```python
-app = FastAPI(title="Stash API")
+app = FastAPI(title="Fetch API")
 app.add_middleware(CORSMiddleware, ...)
 app.include_router(save_router)
 
@@ -158,78 +158,101 @@ One function, `get_logger(name)`, called by every file with its own `__name__` s
 
 ## 3. Mobile (`mobile/`) — file by file
 
-Everything here is early — Phase 0 scaffold only, no real features yet. The app currently does one thing: show the text "Stash" on screen.
+Phase 0 is complete and task 1.8 (share intent) is done. The app now: loads config from `.env`, calls the Railway backend's `/health` on startup and displays the result, and appears in Android's share sheet — receiving a shared URL opens a placeholder save screen.
 
 ### 3.1 `pubspec.yaml` — Flutter's `package.json`
 
-Declares the SDK version (`^3.12.2`), the four real dependencies, and dev dependencies. Worth knowing what each dependency is *for*, since none of them are wired up yet except implicitly via the scaffold:
+Declares the SDK version (`^3.12.2`), the real dependencies, and dev dependencies:
 
 | Package | What it's for | Status |
 |---|---|---|
-| `go_router` | Declarative routing between screens | Wired up in `main.dart`, one route only (`/`) |
+| `go_router` | Declarative routing between screens | Wired up in `main.dart`, two routes (`/`, `/save`) |
+| `receive_sharing_intent` | Receive shared URLs from other apps (the core feature) | **In use** via `services/share_intent_service.dart` |
+| `flutter_dotenv` | Loads `mobile/.env` as a bundled asset at startup | **In use** — loaded in `main.dart`, read in `api_client.dart` |
+| `http` | HTTP client for calling the backend | **In use** in `api_client.dart`. Note it's a *direct* dependency now — it was previously only transitive (via `supabase_flutter`), which is fragile: a future `supabase_flutter` upgrade could drop it and break the build |
 | `supabase_flutter` | Talk to Supabase directly from the app (for reads, per `ARCHITECTURE.md` open question §13) | Installed, **not used yet** |
-| `receive_sharing_intent` | Receive shared URLs from other apps (the core feature — Phase 1 task 1.8) | Installed, **not used yet** |
 | `cupertino_icons` | iOS-style icon font, comes with every Flutter template | Unused, harmless default |
 | `flutter_lints` | Recommended lint rules (dev-only, not shipped in the app) | Active via `analysis_options.yaml` |
 
-**Current-state gap:** the whole point of installing `receive_sharing_intent` is Phase 1 task 1.8 (share sheet integration) — that's the next real feature to build after confirming `flutter run` works end-to-end.
+The `flutter: assets:` block registers `.env` so it gets bundled into the APK — without that line, `dotenv.load()` throws at startup because the file isn't in the build.
 
-### 3.2 `lib/main.dart` — entry point + router
+### 3.2 `lib/main.dart` — entry point + router + share-intent wiring
 
-```dart
-void main() { runApp(const StashApp()); }
+Three jobs now:
 
-final _router = GoRouter(routes: [
-  GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
-]);
+1. **Load config before the app starts.** `main()` is `async` and awaits `dotenv.load()` before `runApp()`, so `API_URL` is guaranteed available by the time any screen builds. `WidgetsFlutterBinding.ensureInitialized()` is required first — loading an asset needs the Flutter engine's platform channels, which don't exist until the binding is initialized.
+2. **Declare routes.** `/` → `HomeScreen`, `/save` → `SaveScreen`. The save route takes its URL via `state.extra` rather than a path parameter (`/save/:url`) — a URL inside a URL would need escaping, and `extra` passes the raw string with no encoding concerns.
+3. **Subscribe to share intents.** `FetchApp` is a `StatefulWidget` (was stateless) because it now owns a stream subscription that must be cancelled in `dispose()` — an un-cancelled stream is a memory leak.
 
-class StashApp extends StatelessWidget {
-  Widget build(BuildContext context) {
-    return MaterialApp.router(title: 'Stash', routerConfig: _router);
-  }
-}
-```
+### 3.3 `lib/services/share_intent_service.dart` — the share-sheet listener
 
-Mirrors `backend/main.py`'s role exactly: wire things together, no business logic. One route (`/` → `HomeScreen`) exists so far. Every future screen (`save_screen.dart`, `search_screen.dart`, etc., per `ARCHITECTURE.md` §5) gets added as another `GoRoute` entry here.
+Wraps `receive_sharing_intent` and exposes only what Fetch needs: a URL string. Two entry points, because Android delivers shares two different ways:
 
-### 3.3 `lib/screens/home_screen.dart` — the only screen that exists
+- `getInitialSharedUrl()` — **cold start.** The app wasn't running; Android launched it *with* the share attached. Read once at startup via `getInitialMedia()`, then `reset()` tells the plugin it's consumed so it isn't redelivered on the next resume.
+- `listen(callback)` — **warm start.** The app was already in memory; the share arrives as a stream event.
 
-```dart
-class HomeScreen extends StatelessWidget {
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Stash', style: TextStyle(fontSize: 24))),
-    );
-  }
-}
-```
+Miss either one and shares silently fail in exactly half the real-world cases. Both paths are verified working on device.
 
-`StatelessWidget` because it currently has no state to manage — it's a static label. It'll become `StatefulWidget` (or use a `FutureBuilder`) once it starts fetching items from the backend (Phase 2 task 2.6), because rendering a list that depends on an async network call needs to react to loading/loaded/error states.
+Everything is wrapped in try/catch returning `null` on failure — needed because the plugin talks over a platform channel that doesn't exist in widget tests, so an un-caught call would break `flutter test`.
 
-**Current-state gap:** Phase 0 task 0.8 (`fetchHealth()` calling the Railway `/health` endpoint and displaying it) isn't done yet — this is the very next milestone: proving the phone and backend can actually talk. There's no `lib/services/api_client.dart` yet.
+### 3.4 `lib/services/api_client.dart` — the backend HTTP client
 
-### 3.4 `test/widget_test.dart` — the one test that exists
+One public function so far: `fetchHealth()`, which returns the `status` string from `GET {API_URL}/health`.
+
+It **throws** on every failure (missing `API_URL`, non-200, unexpected JSON shape) rather than returning null or a sentinel. That's deliberate: `FutureBuilder`'s `snapshot.hasError` then handles all error display with no extra plumbing. The 15-second timeout exists because Railway's free tier idle-sleeps — a cold start can take ~10s, and a shorter timeout would report a false failure.
+
+The `API_URL` null/empty guard has a useful side effect: in widget tests `dotenv.load()` never runs, so the guard throws *before* any network call is attempted — no hanging requests or pending-timer warnings at test teardown.
+
+### 3.5 `lib/screens/home_screen.dart`
+
+Now a `StatefulWidget` that calls `fetchHealth()` in `initState()` and renders the result through a `FutureBuilder` with three states: spinner while waiting, error text on failure, `Backend status: ok` on success.
+
+The `Future` is stored in a `late final` field assigned in `initState()`, **not** created inline in `build()`. This matters: `build()` can run many times (on every rebuild), and creating the Future there would fire a new HTTP request each time.
+
+Polished error/loading states are Phase 3 (§3.1–3.2) — this is deliberately minimal.
+
+### 3.6 `lib/screens/save_screen.dart` — placeholder
+
+Currently just displays the received URL, proving the share pipeline end-to-end. Task 1.9 replaces the body with the real save flow (POST `/save`, loading/success/error states).
+
+### 3.7 `test/widget_test.dart` — the one test that exists
 
 ```dart
 testWidgets('Home screen shows the app name', (tester) async {
-  await tester.pumpWidget(const StashApp());
-  expect(find.text('Stash'), findsOneWidget);
+  await tester.pumpWidget(const FetchApp());
+  expect(find.text('Fetch'), findsOneWidget);
 });
 ```
 
-A widget test: builds the widget tree in memory (no real device needed) and asserts the text "Stash" appears once. This is Flutter's default scaffold test, still accurate since the home screen still just renders that text. Run it with `flutter test`. As screens gain real logic, more tests like this get added — but per `CLAUDE.md`, full test infra is explicitly post-MVP; this is the "manual curl command" equivalent for mobile.
+A widget test: builds the widget tree in memory (no real device needed) and asserts the text "Fetch" appears once. It calls `FetchApp()` directly, never `main()` — so `dotenv.load()` never runs in tests, which is exactly why `api_client.dart` and `share_intent_service.dart` both need to fail gracefully when config/platform channels are absent. Run it with `flutter test`. Per `CLAUDE.md`, full test infra is explicitly post-MVP.
 
 ### 3.5 `android/app/build.gradle.kts` — Android build config
 
 The file we just edited together. Key lines:
-- `namespace`/`applicationId = "com.stash.mobile"` — the app's unique Android package ID.
+- `namespace`/`applicationId = "com.fetch.mobile"` — the app's unique Android package ID.
 - `compileSdk = 37` — **just changed from the Flutter-default `36`** because the `receive_sharing_intent` plugin requires SDK 37. This was the exact build failure we debugged.
 - `minSdk`/`targetSdk = flutter.minSdkVersion/.targetSdkVersion` — still deferring to Flutter's defaults (unlike `compileSdk`, these didn't need overriding).
 - `signingConfig = signingConfigs.getByName("debug")` under `release` — release builds currently sign with the debug key, which is fine for personal use (`flutter run --release`) but **would need a real keystore before any Play Store submission** (`ARCHITECTURE.md` §7.2, explicitly deferred).
 
 ### 3.6 `android/app/src/main/AndroidManifest.xml` — Android's permission/entry manifest
 
-Declares `MainActivity` as the launcher activity, sets the launch theme, and — important for later — has a `<queries>` block for `android.intent.action.PROCESS_TEXT`. That's unrelated to our share-intent feature; it's a default Flutter includes so the engine's built-in text-selection plugin can query other apps. **Phase 1 task 1.8 will add a new `<intent-filter>` here** for `ACTION_SEND` with `text/plain` — that's the actual line that makes "Stash" appear in Android's share sheet when you tap "Share" from TikTok. Doesn't exist yet.
+Declares `MainActivity` as the launcher activity, sets `android:label="Fetch"` (the name shown in the launcher *and* the share sheet), and sets the launch theme.
+
+**The share-sheet registration lives here** — this is the piece that has no Dart equivalent:
+
+```xml
+<intent-filter>
+    <action android:name="android.intent.action.SEND"/>
+    <category android:name="android.intent.category.DEFAULT"/>
+    <data android:mimeType="text/plain"/>
+</intent-filter>
+```
+
+An *intent filter* is how an Android app advertises a capability to the OS. This one says "Fetch can receive a SEND action carrying `text/plain`." Android reads it at **install time** and adds Fetch to its system-wide registry of share targets — which is why the share sheet can list your app without ever running it, and why changing this file requires a full reinstall (a hot reload won't do it; the OS-level registry only updates on install).
+
+`android:launchMode="singleTop"` matters for the warm-start path: without it, every share would spawn a *new* activity instance instead of delivering the intent to the running one.
+
+The separate `<queries>` block for `android.intent.action.PROCESS_TEXT` is unrelated — a Flutter default so the engine's text-selection plugin can query other apps.
 
 ### 3.7 Files not worth deep-diving, but here's why they exist
 
@@ -262,13 +285,13 @@ Declares `MainActivity` as the launcher activity, sets the launch theme, and —
 
 | File | Purpose |
 |---|---|
-| `README.md` | Repo landing page. **Currently stale** — still says "React Native + Expo" under Stack; should be updated to Flutter now that the pivot (commit `25c7aa7`) happened. Worth a quick fix. |
+| `README.md` | Repo landing page. Stack section updated to Flutter during the Fetch rename (2026-07-23). |
 | `.gitignore` | Covers `.env`, `venv/`, `__pycache__/`, `.dart_tool/`, `build/`, `android/local.properties`, etc. — confirmed before any commit per Core Rule 7. |
 | `CLAUDE.md` | Working agreement — not app code, but the rules this guide itself was written under (learning-first framing, phase discipline, architectural rules referenced throughout this doc). |
 
 ---
 
-## 6. Where we actually are right now (Phase 0 → Phase 1 boundary)
+## 6. Where we actually are right now (mid Phase 1)
 
 Cross-referencing `TASKS.md`'s checkboxes with what's on disk:
 
@@ -276,13 +299,15 @@ Cross-referencing `TASKS.md`'s checkboxes with what's on disk:
 - Supabase project + schema + one test row (0.2)
 - Backend fully scaffolded and all of Phase 1's backend work — schemas, fetcher, AI service, database service, `/save` endpoint — built and manually tested (1.1–1.7)
 - Railway deployment live, `/health` and `/save` confirmed public (0.6)
-- Flutter project scaffolded, `compileSdk` bumped to 37, app installs and runs on a real device (0.7, just completed this session)
+- Flutter project scaffolded, `compileSdk` bumped to 37, app installs and runs on a real device (0.7)
+- **Phase 0 complete:** config injection via `flutter_dotenv` decided and documented (0.7), and the mobile↔backend round-trip verified on device — home screen shows `Backend status: ok` from Railway (0.8)
+- **Task 1.8 complete:** share intent integration — Fetch is registered as a system share target, and both cold-start and warm-start shares deliver the URL to `SaveScreen` (verified on device 2026-07-23)
+- Project renamed Stash → Fetch, including Android `applicationId` → `com.fetch.mobile` (2026-07-23)
 
 **Not started yet (in order of what's next):**
-- 0.7 remainder: config-injection decision for API URL / Supabase keys (`--dart-define` vs bundled file) — not decided yet
-- 0.8: `api_client.dart` + calling `/health` from the home screen — the actual mobile↔backend round-trip, still unverified
-- 1.8–1.10: share intent integration, save screen, full API client — the actual core feature
+- 1.9: real save screen — POST `/save` with loading/success/error states, replacing the current placeholder
+- 1.10: full API client (`saveItem`, `getAllItems`, `searchItems`, `deleteItem`) + `models/item.dart` mirroring the backend's `Item`
 
 **Notably not yet built despite being "done" in the backend:** `routes/items.py`, `routes/search.py` — the DB functions exist (§2.8) but nothing calls them. That's correctly scoped for Phase 2, not a bug.
 
-The single most important next step, per `TASKS.md`'s own ordering: **0.8, the hello-world round-trip** (phone calls Railway, displays "status: ok"). Everything after that — share intent, save screen — depends on the API client this step creates.
+The next step per `TASKS.md`'s ordering: **1.9, the real save screen** — wiring `SaveScreen` to the `/save` endpoint that's already built and tested on the backend. That closes the core value loop end-to-end: share a link → AI processes it → row lands in Supabase.

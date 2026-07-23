@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import ALLOWED_ORIGINS
 from routes.save import router as save_router
 
-app = FastAPI(title="Stash API")
+app = FastAPI(title="Fetch API")
 
 app.add_middleware(
     CORSMiddleware,

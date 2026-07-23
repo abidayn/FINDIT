@@ -6,7 +6,7 @@ This file gives Claude Code the context and rules to work effectively on this pr
 
 ## Project Summary
 
-**Stash** (working name) is an Android-first mobile app that lets users save links from any platform — TikTok, Instagram Reels, YouTube, articles — into one organized place. When a user shares a link, the app uses AI to automatically generate a title, a short summary, and a folder category, then makes everything searchable.
+**Fetch** (working name) is an Android-first mobile app that lets users save links from any platform — TikTok, Instagram Reels, YouTube, articles — into one organized place. When a user shares a link, the app uses AI to automatically generate a title, a short summary, and a folder category, then makes everything searchable.
 
 **One-line description:** Share any link to this app, and it auto-organizes it so you can actually find it again.
 
@@ -131,7 +131,7 @@ The builder should be able to defend every choice. Rationale is in `ARCHITECTURE
 Follow this structure exactly. Full version in `ARCHITECTURE.md` Section 5.
 
 ```
-stash/
+fetch/
 ├── mobile/          # Flutter (Dart)
 │   ├── lib/
 │   │   ├── screens/     # Full-page widgets (home, search, save)

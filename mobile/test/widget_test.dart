@@ -4,8 +4,8 @@ import 'package:mobile/main.dart';
 
 void main() {
   testWidgets('Home screen shows the app name', (WidgetTester tester) async {
-    await tester.pumpWidget(const StashApp());
+    await tester.pumpWidget(const FetchApp());
 
-    expect(find.text('Stash'), findsOneWidget);
+    expect(find.text('Fetch'), findsOneWidget);
   });
 }

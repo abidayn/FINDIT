@@ -1,4 +1,4 @@
-# Stash
+# Fetch
 
 Share any link to this app, and it auto-organizes it so you can actually find it again.
 
@@ -6,7 +6,7 @@ An Android-first mobile app that saves links from TikTok, Instagram, YouTube, an
 
 ## Stack
 
-- **Mobile:** React Native + Expo (TypeScript)
+- **Mobile:** Flutter (Dart)
 - **Backend:** FastAPI (Python) on Railway
 - **Database:** Supabase (PostgreSQL)
 - **AI:** Gemini 3 Flash (Google AI Studio)
@@ -14,8 +14,8 @@ An Android-first mobile app that saves links from TikTok, Instagram, YouTube, an
 ## Project structure
 
 ```
-stash/
-├── mobile/     # React Native + Expo app
+fetch/
+├── mobile/     # Flutter app
 ├── backend/    # FastAPI server
 ├── docs/       # PRD, architecture, AI spec, tasks
 └── CLAUDE.md   # Claude Code working agreement

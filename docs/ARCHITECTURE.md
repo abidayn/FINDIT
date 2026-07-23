@@ -1,6 +1,6 @@
 # Architecture Document
 
-**Project:** Stash (working name)
+**Project:** Fetch (working name)
 **Author:** Biday
 **Last updated:** June 26, 2026
 **Status:** Draft v1.0 — locked for MVP, will iterate after Phase 1
@@ -24,7 +24,7 @@ Audience: the builder (Biday), future contributors, and Claude Code while vibe c
 │                       USER'S ANDROID PHONE                       │
 │                                                                  │
 │  ┌──────────────┐         ┌─────────────────────────────────┐  │
-│  │  TikTok / IG │         │      Stash App (Flutter)        │  │
+│  │  TikTok / IG │         │      Fetch App (Flutter)        │  │
 │  │  YouTube /   │ ──────▶ │                                 │  │
 │  │  Chrome /etc │  share  │  - Home screen (list items)     │  │
 │  └──────────────┘         │  - Search screen                │  │
@@ -70,8 +70,8 @@ This is the most important flow in the app. Memorize this sequence.
 
 ```
 1. User taps "Share" on a TikTok video
-2. Android share sheet appears, user selects "Stash"
-3. Stash app opens (or runs in background), receives the URL
+2. Android share sheet appears, user selects "Fetch"
+3. Fetch app opens (or runs in background), receives the URL
 4. App shows a "Saving..." toast/notification
 5. App sends POST /save { url: "..." } to backend
 6. Backend's /save endpoint:
@@ -323,7 +323,7 @@ CREATE INDEX idx_items_search ON items USING gin(
 ## 5. Folder Structure (Full)
 
 ```
-stash/
+fetch/
 │
 ├── mobile/                              # Flutter app
 │   ├── lib/
@@ -415,11 +415,24 @@ LOG_LEVEL=INFO
 YOUTUBE_API_KEY=...        # YouTube Data API v3
 ```
 
-**Mobile:** Flutter has no built-in `.env`-at-runtime convention the way Expo's `EXPO_PUBLIC_*` variables work. Two standard approaches, pick one at task 0.7-equivalent and record the decision here:
-- `--dart-define=API_URL=... --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...` passed at build/run time, read via `String.fromEnvironment()`
-- A `flutter_dotenv` package reading a bundled (not committed) `.env` asset file
+**Mobile (`mobile/.env`):**
+```
+API_URL=https://xxxxx.up.railway.app
+SUPABASE_URL=https://xxxxx.supabase.co
+SUPABASE_ANON_KEY=...
+```
 
-Either way, the same three values travel with the mobile build: backend API URL, Supabase URL, Supabase anon/publishable key. Same security rule as before: anon/publishable key only, never the service key.
+**Decision (2026-07-19, task 0.7):** `flutter_dotenv`, not `--dart-define`. A gitignored `mobile/.env` holds real values; a committed `mobile/.env.example` holds the same keys with empty values — mirroring the backend's `.env`/`.env.example` pattern exactly. Loaded once at startup in `main.dart`, before `runApp()`:
+```dart
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
+  runApp(const FetchApp());
+}
+```
+Rejected `--dart-define`: it has no single source-of-truth file — values would need to be re-typed or scripted into every `flutter run`/`flutter build` invocation — so it doesn't mirror the backend convention the builder already relies on. The `.env` file is registered as a normal Flutter asset in `pubspec.yaml` (`flutter: assets: - .env`); no Android manifest changes are needed — asset declarations are bundled into the APK by the Flutter build tool itself, the same mechanism used for images or fonts, with no native permission model involved.
+
+Same three values travel with the mobile build as before: backend API URL, Supabase URL, Supabase anon/publishable key. Same security rule as before: anon/publishable key only, never the service key. Currently only `API_URL` is read by any code (`lib/services/api_client.dart`) — `SUPABASE_URL`/`SUPABASE_ANON_KEY` are present in both files as blank placeholders until Supabase is wired up on the mobile side.
 
 ### 6.2 Security notes
 

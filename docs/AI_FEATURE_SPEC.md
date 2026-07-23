@@ -1,6 +1,6 @@
 # AI Feature Specification
 
-**Project:** Stash (working name)
+**Project:** Fetch (working name)
 **Author:** Biday
 **Last updated:** June 26, 2026
 **Status:** Draft v1.0 — locked for MVP
