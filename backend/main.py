@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import ALLOWED_ORIGINS
+from routes.items import router as items_router
 from routes.save import router as save_router
+from routes.search import router as search_router
 
 app = FastAPI(title="Fetch API")
 
@@ -14,6 +16,8 @@ app.add_middleware(
 )
 
 app.include_router(save_router)
+app.include_router(items_router)
+app.include_router(search_router)
 
 
 @app.get("/health")

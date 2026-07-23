@@ -40,6 +40,18 @@ def get_all_items() -> list[Item]:
     return [Item(**row) for row in response.data]
 
 
+def get_item_by_id(item_id: str) -> Item | None:
+    """One item by id, or None if no row matched — the caller turns that into
+    a 404. Returning None rather than raising keeps "not found" (an ordinary
+    outcome) separate from "the query broke" (an actual failure)."""
+    response = _client.table(_TABLE).select("*").eq("id", item_id).execute()
+
+    if not response.data:
+        return None
+
+    return Item(**response.data[0])
+
+
 def get_items_by_folder(folder: str) -> list[Item]:
     response = (
         _client.table(_TABLE)

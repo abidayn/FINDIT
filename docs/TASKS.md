@@ -251,12 +251,14 @@ All five states verified on physical Infinix 2026-07-23: loading, success (BBC N
 
 ### Phase 1 — Definition of Done
 
-✅ User can share a URL from TikTok/IG/YouTube/Chrome → it appears in Supabase with correct AI processing
-✅ Save flow completes in under 5 seconds for articles and YouTube
-✅ TikTok/IG URLs save successfully even when content fetch fails (graceful degradation)
-✅ Invalid URLs return clear error messages
+✅ User can share a URL from TikTok/IG/YouTube/Chrome → it appears in Supabase with correct AI processing — confirmed: the live table holds items sourced from tiktok, instagram, youtube, and article
+⬜ Save flow completes in under 5 seconds for articles and YouTube — **never measured.** Observed saves felt closer to 10–20s. Worth timing before Phase 3's performance pass
+✅ TikTok/IG URLs save successfully even when content fetch fails (graceful degradation) — confirmed: TikTok rows exist with titles like "Saved TikTok video", summary "no available transcript or description", folder "Other", confidence "low"
+✅ Invalid URLs return clear error messages — 422 from FastAPI, surfaced on the save screen with a Retry button
 ✅ Backend logs are clean and readable for each request
-✅ At least 10 real items saved to the database by manual testing
+✅ At least 10 real items saved to the database by manual testing — 17 items as of 2026-07-23
+
+**Known quality issue, not a blocker:** folder accuracy is imperfect. An FDE roadmap doc was filed under "Productivity" when "Tech & Coding" arguably fits better, and several articles default to "Other". This is prompt tuning, which `TASKS.md` deliberately schedules for task 4.3 after ~50 items — one or two misses aren't enough signal to tell a biased prompt from a genuinely ambiguous item.
 
 ### Phase 1 — Common Pitfalls
 
@@ -276,14 +278,16 @@ All five states verified on physical Infinix 2026-07-23: loading, success (BBC N
 
 ### 2.1 Backend — `/items` and `/search` endpoints
 
-- [ ] Create `backend/routes/items.py`
-- [ ] `GET /items` returns all items (latest first)
-- [ ] `GET /items?folder=Self+Growth` filters by folder
-- [ ] `GET /items/{id}` returns single item
-- [ ] `DELETE /items/{id}` removes an item
-- [ ] Create `backend/routes/search.py`
-- [ ] `GET /search?q=morning+routine` — uses PostgreSQL full-text search index from schema
-- [ ] All endpoints wired into `main.py`
+- [x] Create `backend/routes/items.py`
+- [x] `GET /items` returns all items (latest first)
+- [x] `GET /items?folder=Self+Growth` filters by folder — typed as the `Folder` Literal, so an unknown folder is rejected with 422 before the handler runs
+- [x] `GET /items/{id}` returns single item (404 when missing) — needed a new `database.get_item_by_id()`, which didn't exist
+- [x] `DELETE /items/{id}` removes an item (204 on success, 404 when missing)
+- [x] Create `backend/routes/search.py`
+- [x] `GET /search?q=morning+routine` — **still ILIKE, not full-text yet**; the GIN index swap is task 2.2. Empty query returns all, queries under 2 chars return nothing
+- [x] All endpoints wired into `main.py`
+
+Verified against the live database 2026-07-23 (17 real items): folder filter returned the 3 Finance items, an invalid folder gave 422, search "BBC" gave 3 hits, a 1-character query gave 0, an empty query gave all 17, GET by bad id gave 404, and DELETE returned 204 then 404 on re-fetch.
 
 ### 2.2 Backend — Search implementation
 
