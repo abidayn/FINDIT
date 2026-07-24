@@ -138,7 +138,7 @@ Notice it **crashes on import** if `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` are mis
 
 `search_items()` uses SQL `ILIKE` (substring match) rather than the GIN full-text index that's already in the Supabase schema (`ARCHITECTURE.md` §3.3). That upgrade is explicitly deferred to Phase 2 (`TASKS.md` §2.2) — `ILIKE` is "good enough" for now and simpler.
 
-**Current-state gap:** `get_all_items`, `get_items_by_folder`, `search_items`, `delete_item` exist in this file but **nothing calls them yet** — there's no `routes/items.py` or `routes/search.py` wired into `main.py`. They were written ahead of the routes that will use them (Phase 2), which is fine — the schema and DB layer were natural to finish together in Phase 1.
+All of these are now wired up: `routes/items.py` and `routes/search.py` (Phase 2 task 2.1) call into them, and `get_item_by_id` was added alongside those routes. `search_items` was rewritten in task 2.2 — see its docstring for why it ORs full-text (`plfts`) with `ILIKE` rather than picking one.
 
 ### 2.9 `utils/logger.py` — thin wrapper around Python's `logging`
 
@@ -210,7 +210,7 @@ Giving `saveItem()` 15s would produce **false timeouts**: the request succeeds s
 
 `_baseUrl()` is the shared helper reading `API_URL` from dotenv. Its null/empty guard has a useful side effect: in widget tests `dotenv.load()` never runs, so it throws *before* any network call — no hanging requests or pending-timer warnings at test teardown.
 
-**Current-state gap:** `getAllItems()`, `searchItems()`, `deleteItem()` are listed in `TASKS.md` 1.10 but deliberately **not built** — their backend endpoints don't exist yet either (Phase 2 task 2.1). Each gets written alongside the screen that uses it.
+`getAllItems()` and `searchItems()` were added in Phase 2 alongside the screens that use them (both 20s — a list read is quicker than a save, but Railway's cold start still has to be absorbed). `deleteItem()` is still unbuilt: the backend `DELETE /items/{id}` exists, but no screen offers deletion yet, so writing the client function now would leave it untested. It gets written when the delete UI does.
 
 ### 3.5 `lib/screens/home_screen.dart`
 
@@ -329,13 +329,12 @@ Cross-referencing `TASKS.md`'s checkboxes with what's on disk:
 
 - **Task 1.9 complete:** real save screen — share → POST `/save` → AI processes → row in Supabase → result on screen. All five states verified on device 2026-07-23.
 - **Phase 2 backend complete (2.1, 2.2):** `GET /items` (+ folder filter), `GET /items/{id}`, `DELETE /items/{id}`, `GET /search`. Search upgraded from ILIKE to full-text (`plfts`) OR-ed with ILIKE — stems *and* does partials. All verified against the live DB and Railway production.
-- **Phase 2 mobile built but NOT verified on device (2.3–2.8):** `Folder` enum, `constants.dart`, `FolderBadge`, `ItemCard`, a real home screen (list + pull-to-refresh + folder chips + empty state), and a debounced search screen. The debug APK compiles and `flutter analyze` is clean, but the UI has not been run — the phone was disconnected. Task 2.9 (on-device testing) is the outstanding gap.
+- **Phase 2 mobile complete (2.3–2.8):** `Folder` enum, `constants.dart`, `FolderBadge`, `ItemCard`, a real home screen (list + pull-to-refresh + folder chips + empty state), and a debounced search screen. Verified on the physical Infinix 2026-07-24: the saved items render, and tapping one opens the original URL in its native app.
 
-**Not started yet (in order of what's next):**
-- **Task 2.9:** run the mobile UI on the phone. Highest-risk unverified item is tap-to-open (`LaunchMode.externalApplication`). Until this is done, Phase 2's Definition of Done is code-complete but not confirmed.
+**Confirmation gaps (not known defects):**
+- Task 2.9 is partly ticked. The home list and tap-to-open — the two highest-risk items — are confirmed on device. The folder chips, the search screen UI, pull-to-refresh, and the empty states haven't been individually exercised. Phase 3's tasks 3.1–3.3 touch every one of them, so they'll get opened anyway.
 - Phase 1 Definition of Done also still has unverified items: save latency never measured, sharing only ever simulated via `adb am start` rather than a real share sheet.
-- Phase 3 (polish) is next after 2.9 passes.
 
-**Notably not yet built despite being "done" in the backend:** `routes/items.py`, `routes/search.py` — the DB functions exist (§2.8) but nothing calls them. That's correctly scoped for Phase 2, not a bug.
+**Not started yet:** Phase 3 (polish) — loading skeletons, error states, empty-state illustrations, duplicate-URL handling, visual consistency, app icon.
 
-The next step: **close out Phase 1's Definition of Done by actually using the app** — share from a real TikTok/Chrome share sheet rather than `adb`, confirm graceful degradation on a TikTok URL, and build up 10+ saved items. That's dogfooding, not coding, and it's where real bugs surface. Then Phase 2 task 2.1 (the read endpoints) begins.
+The next step: **Phase 3.** The app is now usable end-to-end on a real phone, which means the most valuable input is daily use — every rough edge you hit while actually saving links is a Phase 3 task with evidence behind it, rather than a guess.

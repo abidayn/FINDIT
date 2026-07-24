@@ -2,7 +2,7 @@
 
 **Project:** Fetch (working name)
 **Author:** Biday
-**Last updated:** June 26, 2026
+**Last updated:** July 24, 2026
 **Status:** Active build plan
 
 ---
@@ -353,25 +353,27 @@ Verified on Railway production 2026-07-24: "story" matched "stories" (2 rows —
 
 ### 2.9 Manual testing
 
-**Status: NOT done on-device.** The phone was disconnected (builder away) when the mobile UI was finished, so none of the on-device checks below have run. What *was* verified instead: the debug APK builds cleanly (`flutter build apk --debug` succeeded — the Dart fully compiles), `flutter analyze` is clean, and every backend endpoint works against the live database and Railway production. **The UI has not been seen running.** Re-connect the phone and run this list before treating Phase 2 as truly complete.
+**Status: partially verified on device (2026-07-24).** The app was run on the physical Infinix and the builder confirmed the two highest-risk items work: the saved items render on the home screen, and tapping one opens the original URL. The remaining checks below haven't been individually reported yet — they're lower-risk (folder filter is in-memory over an already-rendered list, and the search screen reuses the same `ItemCard` that's now proven to render), but they are *not* confirmed.
 
 - [ ] Save 20+ items across different folders — 17 exist; needs a few more, saved *from the phone*
-- [ ] Verify all show on home screen — **unverified on device**
-- [ ] Filter by each folder, confirm correct items appear — **unverified on device** (in-memory filter logic is simple; the backend folder filter was separately confirmed)
-- [ ] Search for keywords from titles, confirm results — backend search verified; **the search screen UI is unverified**
-- [ ] Test pull-to-refresh — **unverified on device**
-- [ ] Test tapping items opens original URLs in correct app — **unverified, and highest-risk:** `LaunchMode.externalApplication` can only be confirmed on a real device
+- [x] Verify all show on home screen — **confirmed on device 2026-07-24** ("udah muncul semua"). This also implicitly proves `getAllItems()`, JSON parsing into `Item`, `Folder.fromLabel`, `ItemCard`, and `FolderBadge` all work against real data
+- [ ] Filter by each folder, confirm correct items appear — not individually reported; backend folder filter separately confirmed, and the chips filter the in-memory list that's now known to render
+- [ ] Search for keywords from titles, confirm results — backend search verified on production; the search screen UI not individually reported
+- [ ] Test pull-to-refresh — not individually reported
+- [x] Test tapping items opens original URLs in correct app — **confirmed on device 2026-07-24** ("bisa dibuka"). This was the highest-risk item: `LaunchMode.externalApplication` behaviour can only be observed on a real device
 
 ### Phase 2 — Definition of Done
 
-**Code complete, on-device verification pending.** Every criterion below is *implemented* and the backend half of each is *verified*, but the mobile UI has not been run on a device yet (builder away, phone disconnected). Treat these as ⏳ not ✅ until the 2.9 checklist is run.
+**Code complete; the core loop is verified on device, two secondary criteria are not.**
 
-⏳ Home screen lists all saved items with title, summary, folder badge — built; not seen running
-⏳ Folder filter chips work — built; in-memory filter, not seen running
-⏳ Search returns relevant results in under 500ms — backend verified fast on production; UI + latency not measured on device
-⏳ Tapping any item opens the original URL — built; `externalApplication` launch unverified on device
-⏳ Empty states are handled (no items, no search results) — built (`_Message`, "No matches for…"); not seen running
-⏳ App is usable end-to-end for personal use, even if not pretty — pending the above
+✅ Home screen lists all saved items with title, summary, folder badge — confirmed on the physical Infinix 2026-07-24
+✅ Tapping any item opens the original URL — confirmed on device 2026-07-24
+⏳ Folder filter chips work — built and running in the same screen that renders correctly, but the chips themselves weren't individually exercised
+⏳ Search returns relevant results in under 500ms — backend verified fast on production; the search screen UI wasn't opened, and on-device latency was never measured
+⏳ Empty states are handled (no items, no search results) — built (`_Message`, "No matches for…"); can't be seen while the library has 17 items in it
+✅ App is usable end-to-end for personal use, even if not pretty — share → save → browse → open all work on a real phone
+
+**Verdict: Phase 2 is functionally complete.** The unchecked items are confirmation gaps, not known defects, and none of them block starting Phase 3 — in fact 3.1–3.3 (loading, error, and empty states) will force each one to be opened and exercised anyway.
 
 ### Phase 2 — Common Pitfalls
 
