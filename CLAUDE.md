@@ -143,7 +143,7 @@ fetch/
 ├── backend/         # FastAPI (Python)
 │   ├── main.py
 │   ├── routes/      # save.py, items.py, search.py
-│   ├── services/    # fetcher.py, ai.py, database.py
+│   ├── services/    # fetcher.py, ai.py, database.py, reprocess.py
 │   ├── models/      # schemas.py (Pydantic)
 │   └── utils/       # url_parser.py, logger.py
 ├── docs/            # PRD, ARCHITECTURE, AI_FEATURE_SPEC, TASKS

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from models.schemas import ErrorResponse, Item, SaveRequest
-from services import ai, database, fetcher
+from services import ai, database, fetcher, reprocess
 from utils.logger import get_logger
 from utils.url_parser import detect_platform
 
@@ -49,6 +49,16 @@ def save(request: SaveRequest) -> Item:
         existing = None
 
     if existing:
+        if existing.ai_status != "ok":
+            # Re-sharing a link whose AI never ran is how the user asks for a
+            # retry. Without this the duplicate check would hand back the
+            # unprocessed item forever, making it unfixable — the queue sweep
+            # only covers quota_exceeded, so a plain 'failed' item has no other
+            # route back. Falls back to the stored row if quota is still out.
+            logger.info("Duplicate of item %s with ai_status=%s, retrying AI",
+                        existing.id, existing.ai_status)
+            return reprocess.reprocess_item(existing) or existing
+
         logger.info("Duplicate of item %s, not saving again: %s", existing.id, url)
         return existing
 

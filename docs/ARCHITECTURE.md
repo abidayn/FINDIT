@@ -173,6 +173,14 @@ All endpoints return JSON. Errors follow a consistent shape:
 - Returns a normalized `FetchedContent` object: `{ text, source_platform, metadata }`
 - Has timeout (10s max) and graceful fallback to empty content on failure
 
+#### Reprocess Service (`services/reprocess.py`)
+
+- Re-runs the AI over items saved without it because the daily Gemini quota was exhausted (`ai_status = 'quota_exceeded'`)
+- Rebuilds the AI's input from the stored `raw_content` rather than re-fetching; only items with no stored text are fetched again
+- Runs opportunistically — at startup and as a background task after `GET /items` — because there is no scheduler and Railway can idle the container
+- Self-limiting: 10 items per sweep, one sweep per 10 minutes, single-flight, and stops the instant the quota rejects a call again
+- **On Core Rule 6:** this file calls into ai, database and fetcher, which looks like blended concerns. It isn't — it *orchestrates* them the same way `routes/save.py` does, and owns no fetching, prompting or persistence logic of its own. Rule 6 forbids a service doing another's job, not a coordinator calling several
+
 #### AI Service (`services/ai.py`)
 
 - Takes `FetchedContent`, builds a prompt, calls Gemini 1.5 Flash

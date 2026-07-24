@@ -1,9 +1,9 @@
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 
 from models.schemas import ErrorResponse, Folder, Item
-from services import database
+from services import database, reprocess
 from utils.logger import get_logger
 
 router = APIRouter()
@@ -11,13 +11,25 @@ logger = get_logger(__name__)
 
 
 @router.get("/items", response_model=list[Item])
-def list_items(folder: Optional[Folder] = Query(default=None)) -> list[Item]:
+def list_items(
+    background: BackgroundTasks,
+    folder: Optional[Folder] = Query(default=None),
+) -> list[Item]:
     """All items newest-first, or just one folder's when ?folder= is given.
 
     Typing the parameter as `Folder` (the Literal of 9 names) means FastAPI
     rejects an unknown folder with a 422 before this function runs — no
     hand-written validation, same trick as SaveRequest.url being HttpUrl.
+
+    Opening the app also nudges the reprocessing queue. BackgroundTasks runs it
+    *after* this response is sent, so the list never waits on Gemini; the sweep
+    rate-limits itself, so a burst of pull-to-refreshes starts at most one.
+    Results appear on the next refresh rather than this one — the alternative
+    is making every app open wait several seconds for work the user did not ask
+    for.
     """
+    background.add_task(reprocess.sweep)
+
     try:
         if folder is None:
             return database.get_all_items()

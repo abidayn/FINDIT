@@ -403,7 +403,17 @@ Items saved with fallback values are marked with `ai_status = "failed"` in the d
 - **No retry.** `process_content()` returns immediately instead of attempting the second call. A daily quota does not reset for hours, so the retry can only fail identically while adding latency to the save.
 - **Different user-facing wording.** The save screen says the daily limit was reached and the details will stay blank until it resets, rather than implying something went wrong with the link.
 
-These items are the best candidates for a future re-processing job: the content was fetched fine and would classify correctly on a later attempt.
+These items are the best candidates for a re-processing job — **which now exists** (`backend/services/reprocess.py`, added 2026-07-24). Before it, an item that hit the quota stayed in "Other" permanently: `ai_status` was written but nothing ever read it back.
+
+**What gets swept:** only `quota_exceeded`, never `failed`. Quota exhaustion is transient by definition and will succeed later; a generic failure may be permanent, and retrying those daily would burn quota that new saves need.
+
+**How `failed` items get retried instead:** re-sharing the link. `POST /save` finds the existing row, sees `ai_status != "ok"`, and re-runs the AI rather than handing back the unprocessed item. That makes re-sharing the deliberate "retry this one" gesture.
+
+**Input comes from `raw_content`,** not a fresh fetch — the column exists for exactly this (ARCHITECTURE.md 3.3). Only items saved before their platform's fetcher worked have no stored text, and those get one real fetch. The creator handle is not preserved (it lived in `FetchedContent.metadata`, which is not stored), so the low-information prompt variant is slightly thinner on reprocessing.
+
+**Scheduling:** there is no scheduler in this stack, and Railway can idle the container, so an internal timer is not dependable. The sweep runs opportunistically — at startup, and as a background task after `GET /items`. In practice, opening the app the next day drains the queue, which is also when the user would notice the items were still unsorted. Results appear on the following refresh, not the one that triggered it.
+
+**Guards:** at most 10 items per sweep (half the daily free tier, so a backlog can't starve today's new saves), at most one sweep per 10 minutes, one at a time via a non-blocking lock, and an immediate stop the moment the quota rejects a call again.
 
 For MVP: failed items simply stay as fallback. The URL is preserved, so the user always has the original content.
 
