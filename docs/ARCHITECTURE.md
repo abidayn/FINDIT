@@ -168,7 +168,8 @@ All endpoints return JSON. Errors follow a consistent shape:
 - Routes to the appropriate fetcher:
   - **YouTube** → `youtube-transcript-api` library to get transcript
   - **Article/blog** → Jina Reader API (`https://r.jina.ai/{url}`)
-  - **TikTok/IG/Twitter** → minimal: URL + any metadata from Open Graph tags
+  - **TikTok** → the official public oEmbed endpoint (`https://www.tiktok.com/oembed?url=...`), which returns the caption, creator, and thumbnail as JSON. **Open Graph does not work for TikTok** — a video page serves ~400KB of JavaScript with only three `<meta>` tags and no `og:` properties at all. Discovered 2026-07-24 after every TikTok save came back empty while Instagram worked fine
+  - **IG/Twitter** → minimal: URL + any metadata from Open Graph tags (these two *do* serve `og:title`/`og:description`)
 - Returns a normalized `FetchedContent` object: `{ text, source_platform, metadata }`
 - Has timeout (10s max) and graceful fallback to empty content on failure
 

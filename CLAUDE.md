@@ -264,7 +264,8 @@ Full detail in `AI_FEATURE_SPEC.md`. The essentials:
 - **Budget: $0.** Every service must stay on its free tier during development. Flag anything that would incur cost before implementing.
 - **Android only.** No iOS work. iOS is deferred indefinitely (would require $99/year Apple fee).
 - **Solo builder.** No team conventions needed, but code should be GitHub-public-ready.
-- **TikTok/IG content is largely inaccessible.** Accept graceful degradation; don't try to scrape or proxy around platform restrictions.
+- **TikTok/IG content is partially accessible — captions only, never transcripts.** TikTok captions come from the official public oEmbed endpoint (`/oembed?url=...`); Instagram's come from Open Graph tags. Neither gives spoken content. A deleted or private video returns 400 → degrade gracefully. Still don't scrape or proxy around platform restrictions; oEmbed is a documented public API, which is why it's allowed.
+- **Gemini free tier is 20 requests/day**, not the ~1,500 the docs originally assumed (measured 2026-07-24 by hitting the limit). One save = at least one request, two if the AI retries — so roughly **10–20 saves per day** before every save silently falls back to "Untitled saved item". Budget test runs accordingly.
 - **YouTube transcripts are NOT used** (blocked from cloud IPs). Use Data API v3 metadata instead.
 
 ---

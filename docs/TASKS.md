@@ -59,7 +59,7 @@ Mark tasks as you complete them. Don't skip ahead — phases are ordered for a r
     -H 'Content-Type: application/json' \
     -d '{"contents":[{"parts":[{"text":"Say hi in 3 words"}]}]}'
   ```
-- [ ] Verify your free tier limits in AI Studio dashboard (should show ~1,500 RPD for Gemini 3 Flash) — **still open:** only you can check this in the dashboard. Worth doing before heavy dogfooding, so you know how many saves per day you have before hitting the cap
+- [x] Verify your free tier limits in AI Studio dashboard — **answered the hard way 2026-07-24: it is 20 requests/day, not ~1,500.** Measured by hitting it during TikTok testing; the 429 response names the quota explicitly: `GenerateRequestsPerDayPerProjectPerModel-FreeTier`, `quotaValue: 20`, model `gemini-3.5-flash`. One save costs 1 request, or 2 if the AI retries — so **10–20 saves per day**. Past that, every save silently falls back to "Untitled saved item" with folder "Other". This is the real ceiling on daily dogfooding (Phase 4.1 targets 50+ items, which will take several days minimum)
 
 ### 0.4 Google Cloud / YouTube Data API setup
 
@@ -411,6 +411,7 @@ Verified on Railway production 2026-07-24: "story" matched "stories" (2 rows —
 
 ### 3.4 Edge case handling
 
+- [x] **TikTok captions were never being read at all** (found by dogfooding 2026-07-24, fixed same day). Every TikTok save landed in "Other" with "no available transcript or description", while Instagram worked fine even on short captions — that asymmetry was the tell that this was our bug, not a platform limit. Cause: `_fetch_open_graph` was used for TikTok, but a TikTok video page has **zero `og:` tags** (~400KB of JS, three `<meta>` tags, none useful). Fix: a dedicated `_fetch_tiktok()` using TikTok's official public oEmbed endpoint, which returns caption + creator + thumbnail as clean JSON with no API key. Verified end-to-end: a roast-beef video now classifies as "Cooking & Food" (high confidence) and a design video as "Tech & Coding", where both were previously "Other". Deleted/private videos return 400 and still degrade gracefully. **Side benefit:** TikTok items now get real thumbnails, which they never had
 - [ ] Duplicate URLs: if same URL already exists, return the existing item (don't double-save)
 - [ ] Very long titles: truncate with ellipsis in UI
 - [ ] Items with no thumbnail: use platform-specific fallback icon

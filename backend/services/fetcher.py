@@ -32,6 +32,8 @@ def fetch_content(url: str) -> FetchedContent:
             content = _fetch_article(url, platform)
         elif platform == "youtube":
             content = _fetch_youtube(url, platform)
+        elif platform == "tiktok":
+            content = _fetch_tiktok(url, platform)
         else:
             content = _fetch_open_graph(url, platform)
     except Exception as exc:
@@ -76,6 +78,50 @@ def _fetch_youtube(url: str, platform: Platform) -> FetchedContent:
     thumbnail = snippet.get("thumbnails", {}).get("high", {}).get("url")
 
     return FetchedContent(url=url, text=text, source_platform=platform, thumbnail_url=thumbnail)
+
+
+def _fetch_tiktok(url: str, platform: Platform) -> FetchedContent:
+    """TikTok's caption via their public oEmbed endpoint.
+
+    TikTok needs its own path because its HTML carries **no Open Graph tags at
+    all** — a video page is ~400KB of JavaScript with exactly three <meta> tags
+    (charset, viewport, and an internal one). The caption does exist in the
+    page, but only buried inside a large embedded JSON blob, which would mean
+    scraping an undocumented internal structure that can change any week.
+
+    oEmbed is the documented, no-API-key alternative that returns the same
+    caption as small, stable JSON. Note the field naming: oEmbed's `title` is
+    the video's caption, not a headline.
+
+    A deleted or private video returns 400, which raise_for_status turns into
+    an exception that fetch_content catches — the save still proceeds with
+    empty text and the AI's low-information prompt. That is the intended
+    degradation (ARCHITECTURE.md Rule 5), not a failure to fix.
+    """
+    response = httpx.get(
+        "https://www.tiktok.com/oembed",
+        params={"url": url},
+        timeout=TIMEOUT,
+        follow_redirects=True,  # vt.tiktok.com share links redirect to the real URL
+    )
+    response.raise_for_status()
+    data = response.json()
+
+    caption = data.get("title", "")
+    author = data.get("author_name", "")
+
+    # The author line is worth including: a caption like "Never say never
+    # #model #runway" says little, but knowing who posted it helps the model
+    # place the video.
+    text = "\n".join(filter(None, [caption, f"Posted by {author}" if author else ""]))
+
+    return FetchedContent(
+        url=url,
+        text=text,
+        source_platform=platform,
+        thumbnail_url=data.get("thumbnail_url"),
+        metadata={"handle": f"@{author}"} if author else {},
+    )
 
 
 def _fetch_open_graph(url: str, platform: Platform) -> FetchedContent:
