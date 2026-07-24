@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../constants.dart';
 import '../models/folder.dart';
 import '../models/item.dart';
 import '../services/api_client.dart';
@@ -90,25 +91,51 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             }
 
+            // Split off items still waiting on the AI (daily quota hit). Keeping
+            // them out of `organized` means the folder chips and their counts
+            // describe only real, classified items — a pending item's
+            // placeholder "Other" would otherwise inflate the Other count and
+            // show junk titles inside it.
+            final pending = allItems.where((i) => i.isPending).toList();
+            final organized = allItems.where((i) => !i.isPending).toList();
+
             final visible = _selectedFolder == null
-                ? allItems
-                : allItems.where((i) => i.folder == _selectedFolder).toList();
+                ? organized
+                : organized.where((i) => i.folder == _selectedFolder).toList();
+
+            // Processing only surfaces in the "All" view: it's a home-level
+            // status, not something to repeat at the top of every folder.
+            final showProcessing = _selectedFolder == null && pending.isNotEmpty;
 
             return Column(
               children: [
                 _FolderChips(
-                  allItems: allItems,
+                  allItems: organized,
                   selected: _selectedFolder,
                   onSelect: (folder) =>
                       setState(() => _selectedFolder = folder),
                 ),
                 const Divider(height: 1),
                 Expanded(
-                  child: visible.isEmpty
-                      ? _Message(
-                          text: 'Nothing in ${_selectedFolder?.label} yet.',
-                        )
-                      : ListView.separated(
+                  // CustomScrollView so a fixed "Processing" header can sit
+                  // above a lazily-built list in one scroll view. Slivers are
+                  // just scrollable sections; SliverList stays lazy like
+                  // ListView.builder, so a long library still isn't all built
+                  // at once.
+                  child: CustomScrollView(
+                    // Keep it scrollable even when short, so pull-to-refresh
+                    // works on a nearly-empty screen.
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      if (showProcessing)
+                        SliverToBoxAdapter(
+                          child: _ProcessingSection(
+                            items: pending,
+                            onOpen: _openItem,
+                          ),
+                        ),
+                      if (visible.isNotEmpty)
+                        SliverList.separated(
                           itemCount: visible.length,
                           separatorBuilder: (context, index) =>
                               const Divider(height: 1),
@@ -119,7 +146,19 @@ class _HomeScreenState extends State<HomeScreen> {
                               onTap: () => _openItem(item),
                             );
                           },
+                        )
+                      // Only show a "nothing here" message when there's truly
+                      // nothing — not when the processing section is carrying
+                      // the screen on its own.
+                      else if (!showProcessing)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: _Message(
+                            text: 'Nothing in ${_selectedFolder?.label} yet.',
+                          ),
                         ),
+                    ],
+                  ),
                 ),
               ],
             );
@@ -180,6 +219,90 @@ class _FolderChips extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// The "Processing" group at the top of the home list: items that saved fine
+/// but haven't been organised yet because the daily AI limit was reached. The
+/// backend reprocesses them automatically, so this is a temporary holding area,
+/// not a folder — it disappears on its own once the limit resets and the items
+/// get their real titles and folders.
+class _ProcessingSection extends StatelessWidget {
+  final List<Item> items;
+  final ValueChanged<Item> onOpen;
+
+  const _ProcessingSection({required this.items, required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+          child: Row(
+            children: [
+              Icon(Icons.hourglass_empty, size: 18, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Text(
+                'Processing (${items.length})',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(
+            'Saved, waiting for the daily AI limit to reset. These sort '
+            'themselves automatically.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+        for (final item in items)
+          _PendingCard(item: item, onTap: () => onOpen(item)),
+        // A heavier divider marks where the temporary section ends and the real
+        // library begins.
+        const Divider(height: 1, thickness: 6),
+      ],
+    );
+  }
+}
+
+/// A single pending item. Deliberately not an [ItemCard]: its title and summary
+/// are placeholders ("Untitled saved item"), so showing them as if they were
+/// real would look like the save failed. Instead this shows the link itself,
+/// which is the one thing we do know, and the user can still open it.
+class _PendingCard extends StatelessWidget {
+  final Item item;
+  final VoidCallback onTap;
+
+  const _PendingCard({required this.item, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    // The host is a readable stand-in for the missing title, e.g. a bare
+    // "tiktok.com" instead of "Untitled saved item".
+    final host = Uri.tryParse(item.url)?.host ?? item.url;
+
+    return ListTile(
+      onTap: onTap,
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(iconForSource(item.source), color: scheme.onSurfaceVariant),
+      ),
+      title: Text(host, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: const Text('Waiting for AI…'),
+      trailing: Icon(Icons.hourglass_empty, size: 16, color: scheme.onSurfaceVariant),
     );
   }
 }

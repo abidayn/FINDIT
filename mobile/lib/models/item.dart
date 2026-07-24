@@ -19,9 +19,17 @@ class Item {
   final String? confidence;
 
   /// "ok" when the AI ran cleanly, "failed" when the backend saved with
-  /// fallback values. Lets the UI tell the user the save worked but the
-  /// title/summary are placeholders.
+  /// fallback values, "quota_exceeded" when the daily AI limit was hit before
+  /// this item could be processed. Lets the UI tell the user the save worked
+  /// but the title/summary are placeholders.
   final String? aiStatus;
+
+  /// Saved, but the AI hasn't run yet because the daily quota was reached. The
+  /// backend reprocesses these automatically (services/reprocess.py), so the
+  /// home screen shows them as "Processing" instead of filing the placeholder
+  /// "Untitled saved item" under a real folder. Only quota_exceeded — a plain
+  /// "failed" item won't reprocess on its own, so it stays in its folder.
+  bool get isPending => aiStatus == 'quota_exceeded';
 
   const Item({
     required this.id,
