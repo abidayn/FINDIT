@@ -3,6 +3,7 @@ from supabase import Client, create_client
 from config import SUPABASE_SERVICE_KEY, SUPABASE_URL
 from models.schemas import Item
 from utils.logger import get_logger
+from utils.url_parser import normalize_url
 
 logger = get_logger(__name__)
 
@@ -50,6 +51,30 @@ def get_item_by_id(item_id: str) -> Item | None:
         return None
 
     return Item(**response.data[0])
+
+
+def find_duplicate(url: str) -> Item | None:
+    """The already-saved item that is the same link as `url`, or None.
+
+    Matching happens in Python rather than in SQL because stored URLs are raw:
+    deciding equality needs normalize_url() on both sides, and Postgres knows
+    nothing about that function. Only id and url are selected, so the payload
+    stays small even for a large library.
+
+    This is a full scan on every save. That is cheap next to what it prevents —
+    a content fetch plus a Gemini request — and fine at personal-library scale.
+    If the table ever grows big enough for it to matter, the right fix is a
+    `normalized_url` column with a unique index, which is a schema change and
+    so deliberately deferred (migrations are manual in the MVP).
+    """
+    target = normalize_url(url)
+    response = _client.table(_TABLE).select("id,url").execute()
+
+    for row in response.data:
+        if normalize_url(row["url"]) == target:
+            return get_item_by_id(row["id"])
+
+    return None
 
 
 def get_items_by_folder(folder: str) -> list[Item]:

@@ -1,7 +1,18 @@
 from typing import Optional
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from models.schemas import Platform
+
+# Query parameters that identify *who shared it*, not *what it is*. Share
+# sheets regenerate these every time, so the same Instagram post shared twice
+# produces two different URL strings — which is exactly what would defeat a
+# naive duplicate check. Anything starting with "utm_" is stripped too.
+_TRACKING_PARAMS = {
+    "igsh", "igshid", "img_index",  # Instagram (img_index picks a carousel slide, same post)
+    "_t", "_r", "is_from_webapp", "sender_device", "web_id",  # TikTok
+    "si", "feature", "pp",  # YouTube
+    "fbclid", "gclid", "ref", "ref_src", "s", "source",  # generic
+}
 
 # Domain suffix -> platform. We match on suffix so every subdomain works without
 # listing them all: "m.youtube.com" and "music.youtube.com" both end in
@@ -38,6 +49,46 @@ def detect_platform(url: str) -> Platform:
             return platform
 
     return "article"
+
+
+def normalize_url(url: str) -> str:
+    """A stable key for "is this the same link?" — for comparison only.
+
+    The original URL is always what gets stored and opened; this is purely a
+    comparison key, so it is allowed to throw away parts that a browser needs.
+
+    Normalizes: lowercased scheme and host, "www." dropped, tracking params
+    removed, remaining params sorted, trailing slash and #fragment dropped.
+
+    Deliberately NOT handled: different URL *forms* of the same content, e.g.
+    youtu.be/ID vs youtube.com/watch?v=ID, or a vt.tiktok.com share link vs the
+    full URL it redirects to. Catching those means resolving redirects or
+    special-casing each platform, which is a much larger job for a rarer case.
+    Unparseable input is returned unchanged rather than raising — the caller is
+    deduplicating, and a URL it cannot normalize simply never matches anything.
+    """
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return url
+
+    host = (parsed.hostname or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    if parsed.port:
+        host = f"{host}:{parsed.port}"
+
+    kept = {
+        key: values
+        for key, values in parse_qs(parsed.query).items()
+        if key.lower() not in _TRACKING_PARAMS and not key.lower().startswith("utm_")
+    }
+    # Sorted so ?a=1&b=2 and ?b=2&a=1 produce the same key.
+    query = urlencode(sorted((k, v) for k, vs in kept.items() for v in vs))
+
+    path = parsed.path.rstrip("/")
+
+    return urlunparse((parsed.scheme.lower(), host, path, "", query, ""))
 
 
 def extract_youtube_id(url: str) -> Optional[str]:

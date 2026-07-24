@@ -29,11 +29,28 @@ def save(request: SaveRequest) -> Item:
     SaveRequest's HttpUrl field — FastAPI returns 422 before this runs.
 
     fetch_content() and process_content() never raise (they degrade to empty
-    content / fallback values instead), so this function only needs to guard
-    the database write — the one step that's allowed to fail the request.
+    content / fallback values instead), so the only step allowed to fail the
+    request is the database write. The duplicate lookup can raise, but is
+    caught and ignored — it is an optimisation, not a requirement.
     """
     url = str(request.url)
     platform = detect_platform(url)
+
+    # Checked before fetching, not after: an already-saved link needs neither a
+    # content fetch nor a Gemini request, and the free tier only allows 20 of
+    # the latter per day. Re-sharing something also returns instantly, which
+    # reads as the app being fast rather than as an error.
+    try:
+        existing = database.find_duplicate(url)
+    except Exception as exc:
+        # Never let the convenience check cost the user their save (Core Rule 5).
+        # A duplicate row is a far better outcome than a lost link.
+        logger.warning("Duplicate check failed for %s, saving anyway: %s", url, exc)
+        existing = None
+
+    if existing:
+        logger.info("Duplicate of item %s, not saving again: %s", existing.id, url)
+        return existing
 
     fetched = fetcher.fetch_content(url)
     result = ai.process_content(fetched)
