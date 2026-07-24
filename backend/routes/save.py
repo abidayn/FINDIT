@@ -9,6 +9,20 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
+def _ai_status(result: ai.AIResult) -> str:
+    """Which of the three AI outcomes produced this result.
+
+    `is`, not `==`: process_content returns one of two exact module-level
+    constants on failure, so identity tells us which without guessing from
+    field values that a real AI result could coincidentally match.
+    """
+    if result is ai.QUOTA_FALLBACK_RESULT:
+        return "quota_exceeded"
+    if result is ai.FALLBACK_RESULT:
+        return "failed"
+    return "ok"
+
+
 @router.post("/save", response_model=Item, responses={500: {"model": ErrorResponse}})
 def save(request: SaveRequest) -> Item:
     """TASKS.md 1.6 pipeline. URL well-formedness is already enforced by
@@ -33,10 +47,7 @@ def save(request: SaveRequest) -> Item:
         "thumbnail_url": fetched.thumbnail_url,
         "raw_content": fetched.text or None,
         "confidence": result.confidence,
-        # `is`, not `==`: process_content returns the exact FALLBACK_RESULT
-        # object on total failure, so identity tells us "fallback" without
-        # guessing from field values that a real AI result could coincidentally match.
-        "ai_status": "failed" if result is ai.FALLBACK_RESULT else "ok",
+        "ai_status": _ai_status(result),
     }
 
     try:

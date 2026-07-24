@@ -51,6 +51,17 @@ FALLBACK_RESULT = AIResult(
     confidence="low",
 )
 
+# A separate object from FALLBACK_RESULT so routes/save.py can tell the two
+# apart by identity. Running out of daily quota is not a malfunction — the item
+# is fine and would process correctly tomorrow — and saying so is the difference
+# between a user waiting it out and a user reporting a bug.
+QUOTA_FALLBACK_RESULT = AIResult(
+    title="Untitled saved item",
+    summary="Daily AI limit reached. Tap to view original.",
+    folder="Other",
+    confidence="low",
+)
+
 _INSTRUCTIONS = """You are a content classifier and summarizer for a personal knowledge management app. Your job is to take a piece of content and produce a short title, a brief summary, and a folder classification.
 
 RULES:
@@ -197,6 +208,16 @@ def validate(raw: str) -> AIResult | None:
     )
 
 
+def _is_quota_error(exc: Exception) -> bool:
+    """True when Gemini refused the call for quota rather than a real fault.
+
+    Checks the typed `code` first and falls back to matching the message,
+    because the SDK does not guarantee a typed error for every transport path
+    (a raw HTTP error can surface as a plain Exception).
+    """
+    return getattr(exc, "code", None) == 429 or "RESOURCE_EXHAUSTED" in str(exc)
+
+
 def process_content(content: FetchedContent) -> AIResult:
     """The single public entry point to the AI (Core Architectural Rule 1).
 
@@ -217,6 +238,14 @@ def process_content(content: FetchedContent) -> AIResult:
                 )
                 return result
         except Exception as exc:
+            if _is_quota_error(exc):
+                # Retrying is pointless: the daily counter does not reset for
+                # hours, so a second call would fail identically and only slow
+                # the save down. Bail out with the distinct quota result.
+                logger.error(
+                    "Gemini quota exhausted, saving %s without AI: %s", content.url, exc
+                )
+                return QUOTA_FALLBACK_RESULT
             logger.warning("Gemini call failed (attempt %d): %s", attempt, exc)
 
         if attempt == 1:

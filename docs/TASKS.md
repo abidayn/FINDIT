@@ -400,7 +400,7 @@ Verified on Railway production 2026-07-24: "story" matched "stories" (2 rows —
 
 - [ ] Network errors show "No connection — check your internet"
 - [ ] Backend errors show "Something went wrong — try again"
-- [ ] AI processing failures show "Saved with limited info" non-blockingly
+- [x] AI processing failures show "Saved with limited info" non-blockingly — and, since 2026-07-24, **distinguish quota exhaustion from genuine AI failure**. Both save fine (Rule 5), but only one is worth waiting out. Backend detects the 429, skips the pointless retry, and records `ai_status = "quota_exceeded"`; the save screen then says the daily limit was reached instead of implying the link is broken. Prompted by mistaking exactly this for a retrieval bug. Verified: quota path returns the distinct result object in 1.6s (no wasted retry) and the DB accepts the new value with no migration
 - [ ] All error states have a retry action
 
 ### 3.3 Empty states
@@ -465,6 +465,22 @@ Verified on Railway production 2026-07-24: "story" matched "stories" (2 rows —
 **Estimated time:** Ongoing (2+ weeks of daily use)
 
 This is where the product becomes real.
+
+**Where to look when something breaks** (answered 2026-07-24):
+
+| | Railway | Supabase |
+|---|---|---|
+| Holds | our application logs — every `logger.info/warning/error` | the saved rows + Postgres logs |
+| Answers | **"why did it fail?"** | **"what got saved?"** |
+| Example | `429 RESOURCE_EXHAUSTED`, `Fetch failed for … 400` | `ai_status = 'quota_exceeded'` |
+
+Railway is the debugging surface; Supabase shows the consequence. The quota incident was the textbook case — Supabase said `ai_status: failed`, Railway said *why*.
+
+**Two gaps that only bite once there are real users** (not worth fixing while solo):
+- **No request ID or user ID in log lines.** With 20 users you would see "AI failed" with no way to tell whose save it was or which database row it became. Fix: generate a request ID per `/save` and include it in every log line *and* on the stored row.
+- **Railway log retention is short.** A bug reported a week later has no surviving logs. Fix: ship logs somewhere persistent, or record failure reasons on the row itself (which `ai_status` already begins to do).
+
+**Cost, if the app gets ~20 active users** (measured 2026-07-24, not estimated): a social-media save costs ~382 input tokens, an article ~3,023 (it is truncated at `MAX_CONTENT_CHARS = 8_000`), output ~100. At 20 users × 5 saves/day ≈ 3,000 saves/month: `gemini-3.5-flash` ≈ **$9/mo**, `gemini-3.5-flash-lite` ≈ **$2/mo**. Flash-lite is the better fit — the AI's job here is classification plus a two-sentence summary, with no reasoning, so the extra capability of the larger model is paid for and never requested. Verify by running the same ~10 URLs through both and comparing before switching. **The larger untouched lever is `MAX_CONTENT_CHARS`:** articles cost 8× a TikTok purely because we send 8,000 characters to produce two sentences.
 
 ### 4.1 Daily use commitment
 

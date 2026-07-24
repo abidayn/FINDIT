@@ -217,7 +217,7 @@ CREATE TABLE items (
   created_at    TIMESTAMPTZ DEFAULT NOW(),
   user_id       UUID,                    -- nullable in MVP (no auth); used later
   confidence    TEXT,                    -- 'high' | 'medium' | 'low' (AI_FEATURE_SPEC.md 4.4)
-  ai_status     TEXT DEFAULT 'ok'        -- 'ok' | 'failed'; 'failed' = saved with fallback values
+  ai_status     TEXT DEFAULT 'ok'        -- 'ok' | 'failed' | 'quota_exceeded'; the last two saved with fallback values
 );
 
 CREATE INDEX idx_items_folder ON items(folder);
@@ -233,6 +233,8 @@ CREATE INDEX idx_items_search ON items USING gin(
 **Note on `user_id`:** Stored as nullable in MVP. Single-device, single-user. Auth gets added in a future iteration if/when the app opens to others. Adding the column now is cheaper than migrating later.
 
 **Note on `confidence` / `ai_status`:** Added after the initial schema was written. `AI_FEATURE_SPEC.md` Sections 8–9 depend on both, so they belong in the table rather than being recomputed. `ai_status = 'failed'` marks items saved with fallback values, so a future job can re-process them.
+
+`'quota_exceeded'` was added 2026-07-24 as a third value, distinct from `'failed'`, after the Gemini free tier (20 requests/day) ran out mid-session and the app reported it identically to a genuine AI malfunction. The distinction matters twice over: the user is told to wait rather than to worry, and a re-processing job can prioritise these items since nothing is actually wrong with them. No migration was needed — the column is plain `TEXT` with no `CHECK` constraint (verified by inserting the new value against the live database).
 
 **Note on `raw_content`:** Stored to allow future re-processing if we improve the AI pipeline or want to add semantic search later without re-fetching. Optional, but cheap insurance.
 

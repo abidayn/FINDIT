@@ -67,8 +67,12 @@ class Item(BaseModel):
     user_id: Optional[str] = None
     confidence: Optional[Confidence] = None
     # "ok" when the AI ran cleanly, "failed" when we saved with fallback values
-    # (AI_FEATURE_SPEC.md Section 9). Lets us re-process bad items later.
-    ai_status: Optional[Literal["ok", "failed"]] = None
+    # (AI_FEATURE_SPEC.md Section 9). "quota_exceeded" is a third case worth
+    # separating: nothing is wrong with the item, we simply ran out of daily
+    # free-tier requests, so it is the best candidate for later re-processing.
+    # The DB column is plain TEXT with no CHECK constraint, so adding a value
+    # here needs no migration.
+    ai_status: Optional[Literal["ok", "failed", "quota_exceeded"]] = None
 
 
 class ErrorResponse(BaseModel):

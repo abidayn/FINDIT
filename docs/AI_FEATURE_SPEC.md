@@ -399,6 +399,12 @@ FALLBACK_RESULT = AIResult(
 
 Items saved with fallback values are marked with `ai_status = "failed"` in the database. A future feature can let the user manually trigger re-processing, or a background job can retry failed items during off-peak times.
 
+**`ai_status = "quota_exceeded"`** (added 2026-07-24) is a separate marker for items that hit the Gemini free-tier daily cap rather than a real AI failure. Two behaviours differ for this case:
+- **No retry.** `process_content()` returns immediately instead of attempting the second call. A daily quota does not reset for hours, so the retry can only fail identically while adding latency to the save.
+- **Different user-facing wording.** The save screen says the daily limit was reached and the details will stay blank until it resets, rather than implying something went wrong with the link.
+
+These items are the best candidates for a future re-processing job: the content was fetched fine and would classify correctly on a later attempt.
+
 For MVP: failed items simply stay as fallback. The URL is preserved, so the user always has the original content.
 
 ---

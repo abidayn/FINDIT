@@ -123,14 +123,22 @@ class _SaveSucceeded extends StatelessWidget {
           const SizedBox(height: 8),
           Text(item.summary!),
         ],
-        // The backend still saves when the AI fails, using placeholder text.
-        // Saying so is more honest than showing "Untitled saved item" as if
-        // it were a real title.
-        if (item.aiStatus == 'failed') ...[
+        // The backend still saves when the AI can't run, using placeholder
+        // text. Saying so is more honest than showing "Untitled saved item"
+        // as if it were a real title — and the two reasons need different
+        // wording, because only one of them is the user's problem to wait out.
+        if (item.aiStatus == 'quota_exceeded') ...[
           const SizedBox(height: 16),
-          Text(
-            'Saved, but AI details are unavailable for this link.',
-            style: Theme.of(context).textTheme.bodySmall,
+          _Notice(
+            icon: Icons.hourglass_empty,
+            text: "Your link is saved. Today's AI limit has been reached, so "
+                'the title and folder will stay blank until it resets.',
+          ),
+        ] else if (item.aiStatus == 'failed') ...[
+          const SizedBox(height: 16),
+          _Notice(
+            icon: Icons.info_outline,
+            text: 'Saved, but AI details are unavailable for this link.',
           ),
         ],
         const SizedBox(height: 32),
@@ -142,6 +150,30 @@ class _SaveSucceeded extends StatelessWidget {
             child: const Text('Done'),
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// A quiet icon + text line explaining why the AI details are missing. Muted
+/// on purpose: the save itself succeeded, so this is an aside, not an error.
+class _Notice extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _Notice({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodySmall;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: style?.color),
+        const SizedBox(width: 8),
+        // Expanded, or a long message overflows the row instead of wrapping.
+        Expanded(child: Text(text, style: style)),
       ],
     );
   }
